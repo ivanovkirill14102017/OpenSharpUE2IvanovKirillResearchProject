@@ -1,0 +1,223 @@
+<Window x:Class="L2Viewer.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hx="clr-namespace:HelixToolkit.Wpf.SharpDX;assembly=HelixToolkit.Wpf.SharpDX"
+        xmlns:controls="clr-namespace:L2Viewer.Wpf.Controls"
+        mc:Ignorable="d"
+        Title="L2 Package Viewer"
+        Width="1480"
+        Height="920"
+        MinWidth="1200"
+        MinHeight="760">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="8" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Padding="4"
+                Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                BorderThickness="1">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal"
+                            DockPanel.Dock="Left">
+                    <Button x:Name="OpenPackageButton"
+                            MinWidth="92"
+                            Padding="7,3"
+                            Click="OpenPackage_Click"
+                            Content="Open"
+                            FontWeight="SemiBold" />
+                    <Button x:Name="ReloadTreeButton"
+                            MinWidth="84"
+                            Padding="7,3"
+                            Margin="6,0,0,0"
+                            Click="ReloadTreeButton_Click"
+                            Content="Reload" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"
+                            DockPanel.Dock="Right">
+                    <TextBlock Margin="0,0,6,0"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               Text="Client Root" />
+                    <TextBox x:Name="ClientRootTextBox"
+                             Width="320"
+                             Padding="6,3"
+                             Text="C:\Users\User\Downloads\Lineage2_Interlude_windows10\Interlude" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="420" MinWidth="260" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Padding="14"
+                    Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                    BorderThickness="1">
+                <controls:FileBrowserControl x:Name="FileBrowser" />
+            </Border>
+
+            <GridSplitter Grid.Column="1"
+                          Width="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                          ResizeDirection="Columns"
+                          ResizeBehavior="PreviousAndNext"
+                          ShowsPreview="True" />
+
+            <Border Grid.Column="2"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                    BorderThickness="1"
+                    Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" MinHeight="220" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="*" MinHeight="180" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock x:Name="PackageTitleTextBlock"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Text="No package loaded" />
+                        <TextBlock x:Name="PackageMetaTextBlock"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Text="" />
+                        <TextBlock x:Name="PreviewTitleTextBlock"
+                                   Margin="0,10,0,0"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Text="Nothing selected" />
+                        <TextBlock x:Name="PreviewSubtitleTextBlock"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Text="" />
+                        <controls:OptionsControl x:Name="OptionsCtrl" />
+
+                        <controls:ActivityControl x:Name="ActivityCtrl" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <controls:PreviewControl x:Name="PreviewCtrl" Grid.Column="0" />
+
+                        <Border x:Name="AnimationPanelBorder"
+                                Grid.Column="2"
+                                Visibility="Collapsed"
+                                Padding="10"
+                                Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Animations"
+                                           FontSize="15"
+                                           FontWeight="SemiBold" />
+
+                                <TextBlock x:Name="AnimationSummaryTextBlock"
+                                           Grid.Row="1"
+                                           Margin="0,6,0,0"
+                                           TextWrapping="Wrap"
+                                           FontSize="12"
+                                           Text="No animation data" />
+
+                                <ListBox x:Name="AnimationListBox"
+                                         Grid.Row="3"
+                                         SelectionChanged="AnimationListBox_SelectionChanged"
+                                         DisplayMemberPath="DisplayName" />
+
+                                <CheckBox x:Name="AnimateSkeletalPreviewCheckBox"
+                                          Grid.Row="4"
+                                          Margin="0,8,0,0"
+                                          Checked="AnimateSkeletalPreviewCheckBox_Changed"
+                                          Unchecked="AnimateSkeletalPreviewCheckBox_Changed"
+                                          IsChecked="False"
+                                          Content="Animate selected animation" />
+
+                                <StackPanel Grid.Row="5"
+                                            Margin="0,8,0,0">
+                                    <CheckBox x:Name="LoopAnimationCheckBox"
+                                              IsChecked="True"
+                                              Content="Loop selected animation" />
+                                    <TextBlock x:Name="AnimationFrameTextBlock"
+                                               Margin="0,10,0,0"
+                                               Text="Frame 0 / 0" />
+                                    <DockPanel Margin="0,6,0,0"
+                                               LastChildFill="True">
+                                        <Button x:Name="PrevAnimationFrameButton"
+                                                Width="52"
+                                                Padding="4,2"
+                                                Click="PrevAnimationFrameButton_Click"
+                                                Content="Prev" />
+                                        <Button x:Name="NextAnimationFrameButton"
+                                                Width="52"
+                                                Padding="4,2"
+                                                Margin="6,0,0,0"
+                                                DockPanel.Dock="Right"
+                                                Click="NextAnimationFrameButton_Click"
+                                                Content="Next" />
+                                        <Slider x:Name="AnimationFrameSlider"
+                                                Margin="8,0"
+                                                Minimum="0"
+                                                Maximum="0"
+                                                SmallChange="1"
+                                                LargeChange="1"
+                                                TickFrequency="1"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="AnimationFrameSlider_ValueChanged" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <GridSplitter Grid.Row="3"
+                                  Height="6"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                                  ResizeDirection="Rows"
+                                  ResizeBehavior="PreviousAndNext"
+                                  ShowsPreview="True" />
+
+                    <controls:PackageInfoControl x:Name="PackageInfoCtrl" Grid.Row="4" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,89 @@
+<UserControl x:Class="L2Viewer.Wpf.Controls.OptionsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="150" d:DesignWidth="800">
+    <StackPanel>
+        <StackPanel Margin="0,10,0,0"
+                    x:Name="UnrOptionsPanel"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed">
+            <CheckBox x:Name="ShowTerrainCheckBox"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Terrain" />
+            <CheckBox x:Name="ShowWaterCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Water" />
+            <CheckBox x:Name="LoadPolysCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Brush Polys" />
+            <CheckBox x:Name="LoadBspCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="World BSP" />
+            <CheckBox x:Name="LoadPropsCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Props" />
+            <Button x:Name="LoadSelectedButton"
+                    Margin="12,0,0,0"
+                    Padding="8,2"
+                    Content="Load Selected" />
+            <Button x:Name="NextStaticMeshButton"
+                    Margin="8,0,0,0"
+                    Padding="8,2"
+                    Content="Next Mesh" />
+            <TextBlock Text="Cameras:" Margin="12,0,4,0" VerticalAlignment="Center" />
+            <ComboBox x:Name="CamerasComboBox" Width="120" VerticalAlignment="Center" DisplayMemberPath="Name" />
+            <Button x:Name="SaveCameraButton" Margin="4,0,0,0" Padding="8,2" Content="Save Pos" />
+            <Button x:Name="CameraSettingsButton" Margin="8,0,0,0" Padding="8,2" Content="Camera Settings" />
+        </StackPanel>
+        <StackPanel Margin="0,10,0,0"
+                    x:Name="StaticMeshOptionsPanel"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed">
+            <CheckBox x:Name="ShowCollisionCheckBox"
+                      VerticalAlignment="Center"
+                      IsChecked="False"
+                      Content="Show collision" />
+        </StackPanel>
+        <StackPanel Margin="0,10,0,0"
+                    x:Name="SceneLightingPanel"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed">
+            <CheckBox x:Name="ShowAmbientCheckBox"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Ambient" />
+            <CheckBox x:Name="ShowLocalLightsCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Light" />
+            <CheckBox x:Name="ShowShadowsCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="False"
+                      Content="Shadows" />
+            <CheckBox x:Name="ShowSunCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Sun" />
+            <CheckBox x:Name="ShowMoonCheckBox"
+                      Margin="12,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="True"
+                      Content="Moon" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

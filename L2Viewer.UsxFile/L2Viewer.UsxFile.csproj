@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;netstandard2.1</TargetFrameworks>
+    <RootNamespace>L2Viewer.UsxFile</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\L2Viewer.PackageCore\L2Viewer.PackageCore.csproj" />
+    <ProjectReference Include="..\L2Viewer.UtxFile\L2Viewer.UtxFile.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="CoreCompat\PackageBrowserService.cs" />
+    <Compile Remove="CoreCompat\UnrActorDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrBspModelDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrNativeBrushDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrPolyDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrPropDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrSceneCodec.cs" />
+    <Compile Remove="CoreCompat\UnrSceneDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrTerrainDecoder.cs" />
+    <Compile Remove="CoreCompat\UnrWaterDecoder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\NetStandardPolyfills.cs" Link="Compatibility\NetStandardPolyfills.cs" />
+  </ItemGroup>
+
+</Project>
