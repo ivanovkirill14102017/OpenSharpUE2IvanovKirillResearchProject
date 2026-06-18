@@ -43,7 +43,6 @@ public sealed class SceneBspRoomBuilder
             .Where(x => x.ModelReference?.ExportIndex is not null)
             .Select(x => x.ModelReference!.ExportIndex!.Value)
             .ToHashSet();
-
         var builtModels = new List<BspDiagnosticModel>();
         var sceneMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
         var sceneMax = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -61,7 +60,8 @@ public sealed class SceneBspRoomBuilder
                 continue;
             }
 
-            var built = BuildModel(model, isWorldModelCandidate);
+            var brushPolys = BspUvResolver.ResolveBrushPolys(unr, model);
+            var built = BuildModel(model, brushPolys, isWorldModelCandidate);
             if (built is null)
             {
                 continue;
@@ -90,7 +90,7 @@ public sealed class SceneBspRoomBuilder
         };
     }
 
-    private static BspDiagnosticModel? BuildModel(UnrModelObject model, bool isWorldModel)
+    private static BspDiagnosticModel? BuildModel(UnrModelObject model, UnrPolysObject? brushPolys, bool isWorldModel)
     {
         var polygonsByRoom = new Dictionary<int, List<RoomPolygonFragment>>();
         var modelMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -177,9 +177,9 @@ public sealed class SceneBspRoomBuilder
                     a,
                     b,
                     c,
-                    ComputeRawUv(a, surface, model),
-                    ComputeRawUv(b, surface, model),
-                    ComputeRawUv(c, surface, model)));
+                    BspUvResolver.ComputeRawUv(a, surface, model, brushPolys),
+                    BspUvResolver.ComputeRawUv(b, surface, model, brushPolys),
+                    BspUvResolver.ComputeRawUv(c, surface, model, brushPolys)));
                 triangleCount++;
             }
 
@@ -543,26 +543,30 @@ public sealed class SceneBspRoomBuilder
         {
             ExportIndex = source.ExportIndex,
             Name = source.Name,
+            StableName = BuildModelStableName(source),
             IsWorldModel = source.IsWorldModel,
             NodeCount = source.NodeCount,
             PolygonCount = source.PolygonCount,
             TriangleCount = source.TriangleCount,
             WorldBoundsMin = source.BoundsMin,
             WorldBoundsMax = source.BoundsMax,
-            Chunks = source.Chunks.Select(x => Convert(mapPath, x, materialLookup, directTextureLookup)).ToArray()
+            Chunks = source.Chunks.Select(x => Convert(mapPath, source, x, materialLookup, directTextureLookup)).ToArray()
         };
     }
 
     private SceneBspChunk Convert(
         string mapPath,
+        BspDiagnosticModel model,
         BspDiagnosticChunk source,
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
         IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> directTextureLookup)
     {
+        var chunkStableName = BuildChunkStableName(source);
         return new SceneBspChunk
         {
             ChunkIndex = source.ChunkIndex,
             Name = source.Name,
+            StableName = chunkStableName,
             Kind = source.Kind,
             IsPortalLike = source.IsPortalLike,
             IsInvisibleLike = source.IsInvisibleLike,
@@ -574,12 +578,13 @@ public sealed class SceneBspRoomBuilder
             SurfaceCount = source.SurfaceCount,
             WorldBoundsMin = source.BoundsMin,
             WorldBoundsMax = source.BoundsMax,
-            MeshSections = source.MeshParts.Select(x => Convert(mapPath, x, materialLookup, directTextureLookup)).ToArray()
+            MeshSections = source.MeshParts.Select(x => Convert(mapPath, chunkStableName, x, materialLookup, directTextureLookup)).ToArray()
         };
     }
 
     private SceneBspMeshSection Convert(
         string mapPath,
+        string chunkStableName,
         BspDiagnosticMeshPart source,
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
         IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> directTextureLookup)
@@ -627,6 +632,7 @@ public sealed class SceneBspRoomBuilder
         return new SceneBspMeshSection
         {
             Name = source.Name,
+            StableName = BuildSectionStableName(chunkStableName, source),
             SurfaceCount = source.SurfaceCount,
             MaterialRawReference = source.MaterialRawReference,
             MaterialReference = materialReference,
@@ -673,6 +679,35 @@ public sealed class SceneBspRoomBuilder
             material.RootClassName);
     }
 
+    private static string BuildModelStableName(BspDiagnosticModel source)
+    {
+        return $"Model_{source.ExportIndex:D6}_{SanitizeStableName(source.Name)}";
+    }
+
+    private static string BuildChunkStableName(BspDiagnosticChunk source)
+    {
+        return $"Chunk_{SanitizeStableName(source.Name)}";
+    }
+
+    private static string BuildSectionStableName(string chunkStableName, BspDiagnosticMeshPart source)
+    {
+        return $"Section_{chunkStableName}__{SanitizeStableName(source.Name)}";
+    }
+
+    private static string SanitizeStableName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Unnamed";
+        }
+
+        var chars = value
+            .Select(character => char.IsLetterOrDigit(character) ? character : '_')
+            .ToArray();
+        var sanitized = new string(chars).Trim('_');
+        return string.IsNullOrWhiteSpace(sanitized) ? "Unnamed" : sanitized;
+    }
+
     private static int GetKindOrder(string kind)
     {
         return kind switch
@@ -712,21 +747,6 @@ public sealed class SceneBspRoomBuilder
         };
 
         return ((byte)(r * 255f), (byte)(g * 255f), (byte)(b * 255f));
-    }
-
-    private static Vector2 ComputeRawUv(Vector3 point, UnrModelSurface surface, UnrModelObject model)
-    {
-        var baseVector = surface.BaseIndex >= 0 && surface.BaseIndex < model.Vectors.Length
-            ? model.Vectors[surface.BaseIndex]
-            : Vector3.Zero;
-        var textureU = surface.TextureUIndex >= 0 && surface.TextureUIndex < model.Vectors.Length
-            ? model.Vectors[surface.TextureUIndex]
-            : Vector3.UnitX;
-        var textureV = surface.TextureVIndex >= 0 && surface.TextureVIndex < model.Vectors.Length
-            ? model.Vectors[surface.TextureVIndex]
-            : Vector3.UnitY;
-        var offset = point - baseVector;
-        return new Vector2(Vector3.Dot(offset, textureU), Vector3.Dot(offset, textureV));
     }
 
     private static List<Vector3> RemoveSequentialDuplicates(List<Vector3> polygon)

@@ -83,6 +83,12 @@ public sealed class UnrLevelObject : UnrFileObject
     public UnrFileObjectReference? ModelReference { get; init; }
     public UnrFileObjectReference? BrushReference { get; init; }
     public required int NativeTailSize { get; init; }
+    public string? UrlProtocol { get; init; }
+    public string? UrlHost { get; init; }
+    public string? UrlMap { get; init; }
+    public string? UrlPortal { get; init; }
+    public int? UrlPort { get; init; }
+    public bool? UrlValid { get; init; }
 }
 
 public sealed class UnrTerrainInfoObject : UnrFileObject

@@ -7,6 +7,14 @@ namespace L2Viewer.SceneDomain.Services;
 
 public sealed class SceneBrushPolyBuilder
 {
+    private sealed record BrushPolyOwner(
+        string Name,
+        Vector3? Location,
+        Vector3? Rotation,
+        float DrawScale,
+        Vector3 DrawScale3D,
+        Vector3 PrePivot);
+
     private readonly string? _clientRoot;
     private readonly SceneMaterialResolver? _materialResolver;
     private readonly BspTextureManager? _textureManager;
@@ -47,20 +55,33 @@ public sealed class SceneBrushPolyBuilder
             .Where(x => !excludeVolumes || x is not UnrVolumeBaseObject)
             .ToList();
 
-        var polysToActor = new Dictionary<int, UnrActorBaseObject>();
+        var polysToOwner = new Dictionary<int, BrushPolyOwner>();
         foreach (var actor in expectedBrushActors)
         {
-            var brushExportIdx = actor.BrushReference!.ExportIndex!.Value;
-            var modelObj = unr.ExportObjects.FirstOrDefault(x => x.Export.Index == brushExportIdx)?.Object as UnrModelObject;
-            if (modelObj is null)
-            {
-                continue;
-            }
+            TryRegisterOwner(unr, polysToOwner, actor.BrushReference!.ExportIndex!.Value, new BrushPolyOwner(
+                actor.ObjectName,
+                actor.Location,
+                actor.Rotation,
+                actor.DrawScale,
+                actor.DrawScale3D,
+                actor.PrePivot));
+        }
 
-            if (modelObj.PolysReference?.ExportIndex is int polysExportIndex)
-            {
-                polysToActor.TryAdd(polysExportIndex, actor);
-            }
+        var expectedBrushObjects = unr.ExportObjects
+            .Select(x => x.Object)
+            .OfType<UnrBrushObject>()
+            .Where(x => x.BrushReference?.ExportIndex is not null)
+            .ToList();
+
+        foreach (var brush in expectedBrushObjects)
+        {
+            TryRegisterOwner(unr, polysToOwner, brush.BrushReference!.ExportIndex!.Value, new BrushPolyOwner(
+                brush.ObjectName,
+                brush.Location,
+                brush.Rotation,
+                brush.DrawScale,
+                brush.DrawScale3D,
+                brush.PrePivot));
         }
 
         var builtActors = new List<SceneBrushPolyActor>();
@@ -74,19 +95,18 @@ public sealed class SceneBrushPolyBuilder
                 continue;
             }
 
-            if (!polysToActor.TryGetValue(exportObj.Export.Index, out var ownerActor))
+            if (!polysToOwner.TryGetValue(exportObj.Export.Index, out var owner))
             {
                 continue;
             }
 
-            var transform = Matrix4x4.CreateScale(ownerActor.DrawScale3D * ownerActor.DrawScale) *
+            var transform = Matrix4x4.CreateScale(owner.DrawScale3D * owner.DrawScale) *
                             Matrix4x4.CreateFromYawPitchRoll(
-                                (ownerActor.Rotation?.Y ?? 0) * (MathF.PI / 32768f),
-                                (ownerActor.Rotation?.X ?? 0) * (MathF.PI / 32768f),
-                                (ownerActor.Rotation?.Z ?? 0) * (MathF.PI / 32768f)) *
-                            Matrix4x4.CreateTranslation(ownerActor.Location ?? Vector3.Zero);
-            var prePivot = ownerActor.PrePivot;
-            var built = BuildBrushPoly(unr.FilePath, exportObj.Export.Index, ownerActor.ObjectName, polys, transform, prePivot, materialLookup, directTextureLookup);
+                                (owner.Rotation?.Y ?? 0) * (MathF.PI / 32768f),
+                                (owner.Rotation?.X ?? 0) * (MathF.PI / 32768f),
+                                (owner.Rotation?.Z ?? 0) * (MathF.PI / 32768f)) *
+                            Matrix4x4.CreateTranslation(owner.Location ?? Vector3.Zero);
+            var built = BuildBrushPoly(unr.FilePath, exportObj.Export.Index, owner.Name, polys, transform, owner.PrePivot, materialLookup, directTextureLookup);
             if (built is null)
             {
                 continue;
@@ -110,6 +130,19 @@ public sealed class SceneBrushPolyBuilder
             WorldBoundsMax = sceneMax,
             Actors = builtActors.ToArray()
         };
+    }
+
+    private static void TryRegisterOwner(
+        L2Viewer.UnrFile.UnrFile unr,
+        IDictionary<int, BrushPolyOwner> polysToOwner,
+        int brushExportIndex,
+        BrushPolyOwner owner)
+    {
+        var modelObj = unr.ExportObjects.FirstOrDefault(x => x.Export.Index == brushExportIndex)?.Object as UnrModelObject;
+        if (modelObj?.PolysReference?.ExportIndex is int polysExportIndex)
+        {
+            polysToOwner.TryAdd(polysExportIndex, owner);
+        }
     }
 
     private SceneBrushPolyActor? BuildBrushPoly(

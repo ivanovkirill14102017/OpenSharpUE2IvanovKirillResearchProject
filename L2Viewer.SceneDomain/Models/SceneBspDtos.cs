@@ -14,6 +14,7 @@ public sealed class SceneBspModel
 {
     public required int ExportIndex { get; init; }
     public required string Name { get; init; }
+    public required string StableName { get; init; }
     public required bool IsWorldModel { get; init; }
     public required int NodeCount { get; init; }
     public required int PolygonCount { get; init; }
@@ -27,6 +28,7 @@ public sealed class SceneBspChunk
 {
     public required int ChunkIndex { get; init; }
     public required string Name { get; init; }
+    public required string StableName { get; init; }
     public required string Kind { get; init; }
     public required bool IsPortalLike { get; init; }
     public required bool IsInvisibleLike { get; init; }
@@ -44,6 +46,7 @@ public sealed class SceneBspChunk
 public sealed class SceneBspMeshSection
 {
     public required string Name { get; init; }
+    public required string StableName { get; init; }
     public required int SurfaceCount { get; init; }
     public required int MaterialRawReference { get; init; }
     public required string MaterialReference { get; init; }

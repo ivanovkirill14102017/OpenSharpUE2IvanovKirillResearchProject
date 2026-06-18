@@ -30,7 +30,8 @@ public sealed class BspDiagnosticSceneBuilder
                 continue;
             }
 
-            var built = BuildModel(model, worldModelExports.Contains(model.ExportIndex));
+            var brushPolys = BspUvResolver.ResolveBrushPolys(unr, model);
+            var built = BuildModel(model, brushPolys, worldModelExports.Contains(model.ExportIndex));
             if (built is null)
             {
                 continue;
@@ -59,7 +60,7 @@ public sealed class BspDiagnosticSceneBuilder
         };
     }
 
-    private static BspDiagnosticModel? BuildModel(UnrModelObject model, bool isWorldModel)
+    private static BspDiagnosticModel? BuildModel(UnrModelObject model, UnrPolysObject? brushPolys, bool isWorldModel)
     {
         var polygons = new List<BspChunkPartitioner.BspPolygonFragment>();
         var modelMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -147,9 +148,9 @@ public sealed class BspDiagnosticSceneBuilder
                     a,
                     b,
                     c,
-                    ComputeRawUv(a, surface, model),
-                    ComputeRawUv(b, surface, model),
-                    ComputeRawUv(c, surface, model)));
+                    BspUvResolver.ComputeRawUv(a, surface, model, brushPolys),
+                    BspUvResolver.ComputeRawUv(b, surface, model, brushPolys),
+                    BspUvResolver.ComputeRawUv(c, surface, model, brushPolys)));
                 triangleCount++;
             }
 
@@ -258,21 +259,6 @@ public sealed class BspDiagnosticSceneBuilder
         };
 
         return ((byte)(r * 255f), (byte)(g * 255f), (byte)(b * 255f));
-    }
-
-    private static Vector2 ComputeRawUv(Vector3 point, UnrModelSurface surface, UnrModelObject model)
-    {
-        var baseVector = surface.BaseIndex >= 0 && surface.BaseIndex < model.Vectors.Length
-            ? model.Vectors[surface.BaseIndex]
-            : Vector3.Zero;
-        var textureU = surface.TextureUIndex >= 0 && surface.TextureUIndex < model.Vectors.Length
-            ? model.Vectors[surface.TextureUIndex]
-            : Vector3.UnitX;
-        var textureV = surface.TextureVIndex >= 0 && surface.TextureVIndex < model.Vectors.Length
-            ? model.Vectors[surface.TextureVIndex]
-            : Vector3.UnitY;
-        var offset = point - baseVector;
-        return new Vector2(Vector3.Dot(offset, textureU), Vector3.Dot(offset, textureV));
     }
 
     private static List<Vector3> RemoveSequentialDuplicates(List<Vector3> polygon)

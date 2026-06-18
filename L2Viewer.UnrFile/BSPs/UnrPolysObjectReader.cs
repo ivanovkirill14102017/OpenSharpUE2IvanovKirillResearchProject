@@ -21,12 +21,14 @@ internal static class UnrPolysObjectReader
             };
         }
 
+        var polys = native.Polys.Select(ConvertPoly).ToArray();
+
         return new UnrPolysObject
         {
             ExportIndex = exportIndex,
             ClassName = className,
             ObjectName = objectName,
-            Polys = native.Polys.Select(ConvertPoly).ToArray()
+            Polys = polys
         };
     }
 

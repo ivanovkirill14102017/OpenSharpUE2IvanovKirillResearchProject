@@ -82,7 +82,8 @@ public sealed class SceneMoverBuilder
                                 (mover.Rotation?.Z ?? 0) * (MathF.PI / 32768f)) *
                             Matrix4x4.CreateTranslation(mover.Location ?? Vector3.Zero);
             var prePivot = mover.PrePivot;
-            var built = BuildMover(unr.FilePath, mover.ObjectName, mover.ExportIndex, modelObj, transform, prePivot, materialLookup, directTextureLookup);
+            var brushPolys = BspUvResolver.ResolveBrushPolys(unr, modelObj);
+            var built = BuildMover(unr.FilePath, mover.ObjectName, mover.ExportIndex, modelObj, brushPolys, transform, prePivot, materialLookup, directTextureLookup);
             if (built is null)
             {
                 continue;
@@ -113,6 +114,7 @@ public sealed class SceneMoverBuilder
         string moverName,
         int exportIndex,
         UnrModelObject model,
+        UnrPolysObject? brushPolys,
         Matrix4x4 transform,
         Vector3 prePivot,
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
@@ -239,9 +241,9 @@ public sealed class SceneMoverBuilder
                     continue;
                 }
 
-                var uvA = ComputeRawUv(a, surface, model);
-                var uvB = ComputeRawUv(b, surface, model);
-                var uvC = ComputeRawUv(c, surface, model);
+                var uvA = BspUvResolver.ComputeRawUv(a, surface, model, brushPolys);
+                var uvB = BspUvResolver.ComputeRawUv(b, surface, model, brushPolys);
+                var uvC = BspUvResolver.ComputeRawUv(c, surface, model, brushPolys);
 
                 var worldA = Vector3.Transform(a - prePivot, transform);
                 var worldB = Vector3.Transform(b - prePivot, transform);
@@ -304,14 +306,6 @@ public sealed class SceneMoverBuilder
             WorldBoundsMin = modelMin,
             WorldBoundsMax = modelMax
         };
-    }
-
-    private static Vector2 ComputeRawUv(Vector3 point, UnrModelSurface surface, UnrModelObject model)
-    {
-        var pBase = surface.BaseIndex >= 0 && surface.BaseIndex < model.Vectors.Length ? model.Vectors[surface.BaseIndex] : Vector3.Zero;
-        var vTextureU = surface.TextureUIndex >= 0 && surface.TextureUIndex < model.Vectors.Length ? model.Vectors[surface.TextureUIndex] : Vector3.UnitX;
-        var vTextureV = surface.TextureVIndex >= 0 && surface.TextureVIndex < model.Vectors.Length ? model.Vectors[surface.TextureVIndex] : Vector3.UnitY;
-        return new Vector2(Vector3.Dot(point - pBase, vTextureU), Vector3.Dot(point - pBase, vTextureV));
     }
 
     private static List<Vector3> RemoveSequentialDuplicates(List<Vector3> points)

@@ -9,6 +9,7 @@ internal static class UnrModelObjectReader
         string className,
         string objectName)
     {
+        var blob = PackageReader.ReadExportBlob(package, export);
         using var reader = PackageReader.OpenExportReader(package, export);
         reader.ReadStateFrameIfPresent(export.ObjectFlags);
 
