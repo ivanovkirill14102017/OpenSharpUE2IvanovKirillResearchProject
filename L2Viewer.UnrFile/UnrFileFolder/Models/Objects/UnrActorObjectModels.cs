@@ -11,8 +11,57 @@ public sealed class UnrConvexVolumeObject : UnrVolumeBaseObject
     public UnrTextureModifyInfo? TexModifyInfo { get; init; }
 }
 public sealed class UnrAntiPortalActorObject : UnrActorBaseObject;
-public sealed class UnrBeamEmitterObject : UnrActorBaseObject;
-public sealed class UnrVertMeshEmitterObject : UnrActorBaseObject;
+public sealed class UnrBeamEmitterObject : UnrActorBaseObject, IUnrFadeInParticleLayerObject, IUnrColorScaledParticleLayerObject
+{
+    public byte? DetermineEndPointBy { get; init; }
+    public UnrParticleColorScale[] ColorScale { get; init; } = [];
+    public UnrRangeVector? ColorMultiplierRange { get; init; }
+    public float? Opacity { get; init; }
+    public float? FadeOutStartTime { get; init; }
+    public bool FadeOut { get; init; }
+    public float? FadeInEndTime { get; init; }
+    public bool FadeIn { get; init; }
+    public int? MaxParticles { get; init; }
+    public string? NameValue { get; init; }
+    public UnrRangeVector? StartLocationRange { get; init; }
+    public UnrFloatRange? SphereRadiusRange { get; init; }
+    public UnrRangeVector? StartLocationPolarRange { get; init; }
+    public UnrRangeVector? StartSizeRange { get; init; }
+    public UnrFloatRange? LifetimeRange { get; init; }
+    public float? WarmupTicksPerSecond { get; init; }
+    public float? RelativeWarmupTime { get; init; }
+}
+public sealed class UnrVertMeshEmitterObject : UnrActorBaseObject, IUnrFadeInParticleLayerObject, IUnrColorScaledParticleLayerObject
+{
+    public UnrFileObjectReference? VertexMeshReference { get; init; }
+    public bool UseMeshBlendMode { get; init; }
+    public Vector3? Acceleration { get; init; }
+    public bool UseColorScale { get; init; }
+    public UnrParticleColorScale[] ColorScale { get; init; } = [];
+    public float? ColorScaleRepeats { get; init; }
+    public UnrRangeVector? ColorMultiplierRange { get; init; }
+    public float? Opacity { get; init; }
+    public float? FadeOutStartTime { get; init; }
+    public bool FadeOut { get; init; }
+    public float? FadeInEndTime { get; init; }
+    public bool FadeIn { get; init; }
+    public byte? CoordinateSystem { get; init; }
+    public int? MaxParticles { get; init; }
+    public int? CheckLevelOfWeather { get; init; }
+    public bool WeatherEffect { get; init; }
+    public string? NameValue { get; init; }
+    public UnrRangeVector? StartLocationRange { get; init; }
+    public bool UseRevolution { get; init; }
+    public UnrRangeVector? RevolutionsPerSecondRange { get; init; }
+    public bool SpinParticles { get; init; }
+    public UnrRangeVector? StartSpinRange { get; init; }
+    public UnrRangeVector? StartSizeRange { get; init; }
+    public byte? DrawStyle { get; init; }
+    public UnrFloatRange? LifetimeRange { get; init; }
+    public UnrRangeVector? StartVelocityRange { get; init; }
+    public float? WarmupTicksPerSecond { get; init; }
+    public float? RelativeWarmupTime { get; init; }
+}
 public sealed class UnrSceneManagerObject : UnrActorBaseObject;
 public sealed class UnrL2SeamlessInfoObject : UnrActorBaseObject;
 public sealed class UnrLineagePlayerControllerObject : UnrActorBaseObject;
@@ -65,6 +114,7 @@ public sealed class UnrEmitterObject : UnrActorBaseObject
     public bool SunAffect { get; init; }
     public bool Directional { get; init; }
     public Vector3? SwayRotationOrig { get; init; }
+    public UnrTextureModifyInfo? TexModifyInfo { get; init; }
 }
 public sealed class UnrLevelInfoObject : UnrActorBaseObject
 {
@@ -147,7 +197,7 @@ public sealed class UnrSkyZoneInfoObject : UnrActorBaseObject
     public UnrPointRegion? Region { get; init; }
     public UnrTextureModifyInfo? TexModifyInfo { get; init; }
 }
-public sealed class UnrSpriteEmitterObject : UnrFileObject
+public sealed class UnrSpriteEmitterObject : UnrFileObject, IUnrTimedParticleLayerObject, IUnrColorScaledParticleLayerObject
 {
     public byte? UseDirectionAs { get; init; }
     public Vector3? Acceleration { get; init; }
@@ -164,6 +214,7 @@ public sealed class UnrSpriteEmitterObject : UnrFileObject
     public UnrRangeVector? StartSpinRange { get; init; }
     public bool UseSizeScale { get; init; }
     public bool UseRegularSizeScale { get; init; }
+    public UnrParticleSizeScale[] SizeScale { get; init; } = [];
     public UnrRangeVector? StartSizeRange { get; init; }
     public bool UniformSize { get; init; }
     public byte? DrawStyle { get; init; }
@@ -173,6 +224,7 @@ public sealed class UnrSpriteEmitterObject : UnrFileObject
     public float? WarmupTicksPerSecond { get; init; }
     public float? RelativeWarmupTime { get; init; }
     public bool BlendBetweenSubdivisions { get; init; }
+    public UnrParticleColorScale[] ColorScale { get; init; } = [];
     public UnrFileUnknownProperty[] UnknownProperties { get; init; } = [];
 }
 public sealed class UnrStaticMeshActorObject : UnrActorBaseObject
@@ -246,7 +298,7 @@ public sealed class UnrMovableStaticMeshActorObject : UnrActorBaseObject
     public bool UseL2RotatorRandomStart { get; init; }
     public byte[]? L2AccelRatioPayload { get; init; }
 }
-public sealed class UnrMeshEmitterObject : UnrFileObject
+public sealed class UnrMeshEmitterObject : UnrFileObject, IUnrFadeInParticleLayerObject, IUnrColorScaledParticleLayerObject
 {
     public UnrFileObjectReference? StaticMeshReference { get; init; }
     public bool UseMeshBlendMode { get; init; }
@@ -265,6 +317,7 @@ public sealed class UnrMeshEmitterObject : UnrFileObject
     public UnrRangeVector? StartVelocityRange { get; init; }
     public float? WarmupTicksPerSecond { get; init; }
     public float? RelativeWarmupTime { get; init; }
+    public UnrParticleColorScale[] ColorScale { get; init; } = [];
     public UnrFileUnknownProperty[] UnknownProperties { get; init; } = [];
 }
 public sealed class UnrStaticMeshInstanceObject : UnrActorBaseObject

@@ -292,12 +292,12 @@ public static class UnrFileReader
 
         if (classKind == UnrExportClassKind.BeamEmitter)
         {
-            return UnrSimpleActorObjectReader.ReadBeamEmitter(package, export, exportIndex, className, objectName);
+            return UnrBeamEmitterObjectReader.Read(package, export, exportIndex, className, objectName);
         }
 
         if (classKind == UnrExportClassKind.VertMeshEmitter)
         {
-            return UnrSimpleActorObjectReader.ReadVertMeshEmitter(package, export, exportIndex, className, objectName);
+            return UnrVertMeshEmitterObjectReader.Read(package, export, exportIndex, className, objectName);
         }
 
         if (classKind == UnrExportClassKind.SceneManager)

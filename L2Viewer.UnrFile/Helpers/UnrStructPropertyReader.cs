@@ -162,12 +162,109 @@ internal static class UnrStructPropertyReader
         };
     }
 
-    private static bool ReadNestedBool(StreamPropertyTag tag)
+    public static UnrFloatRange ReadRangeProperty(
+        PackageData package,
+        BinaryReader reader,
+        StreamPropertyTag tag,
+        string className,
+        int exportIndex,
+        string objectName)
+    {
+        if (tag.Type != PackageReader.PropertyTypeStruct || !tag.StructName.Is("Range") || tag.DataSize < 0)
+        {
+            throw new PackageReadException($"{className} export {exportIndex} ({objectName}) has invalid Range payload in '{tag.Name}'.");
+        }
+
+        var end = reader.BaseStream.Position + tag.DataSize;
+        float? min = null;
+        float? max = null;
+        while (reader.BaseStream.Position < end)
+        {
+            var nestedTag = reader.ReadPropertyTag(package.Names, className, exportIndex, objectName);
+            if (nestedTag.IsTerminator)
+            {
+                break;
+            }
+
+            switch (nestedTag.Name)
+            {
+                case "Min":
+                    min = reader.ReadFloatProperty(nestedTag, className, exportIndex, objectName);
+                    break;
+                case "Max":
+                    max = reader.ReadFloatProperty(nestedTag, className, exportIndex, objectName);
+                    break;
+                default:
+                    _ = reader.SkipPropertyPayload(nestedTag, className, exportIndex, objectName, package.Names);
+                    break;
+            }
+        }
+
+        reader.BaseStream.Position = end;
+        return new UnrFloatRange
+        {
+            Min = min ?? 0f,
+            Max = max ?? 0f
+        };
+    }
+
+    public static UnrRangeVector ReadRangeVectorProperty(
+        PackageData package,
+        BinaryReader reader,
+        StreamPropertyTag tag,
+        string className,
+        int exportIndex,
+        string objectName)
+    {
+        if (tag.Type != PackageReader.PropertyTypeStruct || !tag.StructName.Is("RangeVector") || tag.DataSize < 0)
+        {
+            throw new PackageReadException($"{className} export {exportIndex} ({objectName}) has invalid RangeVector payload in '{tag.Name}'.");
+        }
+
+        var end = reader.BaseStream.Position + tag.DataSize;
+        UnrFloatRange? x = null;
+        UnrFloatRange? y = null;
+        UnrFloatRange? z = null;
+        while (reader.BaseStream.Position < end)
+        {
+            var nestedTag = reader.ReadPropertyTag(package.Names, className, exportIndex, objectName);
+            if (nestedTag.IsTerminator)
+            {
+                break;
+            }
+
+            switch (nestedTag.Name)
+            {
+                case "X":
+                    x = ReadRangeProperty(package, reader, nestedTag, className, exportIndex, objectName);
+                    break;
+                case "Y":
+                    y = ReadRangeProperty(package, reader, nestedTag, className, exportIndex, objectName);
+                    break;
+                case "Z":
+                    z = ReadRangeProperty(package, reader, nestedTag, className, exportIndex, objectName);
+                    break;
+                default:
+                    _ = reader.SkipPropertyPayload(nestedTag, className, exportIndex, objectName, package.Names);
+                    break;
+            }
+        }
+
+        reader.BaseStream.Position = end;
+        return new UnrRangeVector
+        {
+            X = x ?? new UnrFloatRange { Min = 0f, Max = 0f },
+            Y = y ?? new UnrFloatRange { Min = 0f, Max = 0f },
+            Z = z ?? new UnrFloatRange { Min = 0f, Max = 0f }
+        };
+    }
+
+    internal static bool ReadNestedBool(StreamPropertyTag tag)
     {
         return tag.ThrowIfNotTagEncodedBool($"Invalid nested bool property '{tag.Name}'.");
     }
 
-    private static byte ReadNestedByte(
+    internal static byte ReadNestedByte(
         byte[] payload,
         ref int position,
         StreamPropertyTag tag,
@@ -185,7 +282,7 @@ internal static class UnrStructPropertyReader
         return payload[position++];
     }
 
-    private static int ReadNestedInt32(
+    internal static int ReadNestedInt32(
         byte[] payload,
         ref int position,
         StreamPropertyTag tag,
@@ -205,7 +302,27 @@ internal static class UnrStructPropertyReader
         return value;
     }
 
-    private static UnrFileColor ReadNestedColor(
+    internal static float ReadNestedFloat(
+        byte[] payload,
+        ref int position,
+        StreamPropertyTag tag,
+        string className,
+        int exportIndex,
+        string objectName,
+        string parentName)
+    {
+        if (tag.Type != PackageReader.PropertyTypeFloat || tag.DataSize != 4 || position + 4 > payload.Length)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) has invalid nested float '{tag.Name}' in '{parentName}'.");
+        }
+
+        var value = BitConverter.ToSingle(payload, position);
+        position += 4;
+        return value;
+    }
+
+    internal static UnrFileColor ReadNestedColor(
         byte[] payload,
         ref int position,
         StreamPropertyTag tag,
@@ -232,7 +349,7 @@ internal static class UnrStructPropertyReader
         return value;
     }
 
-    private static UnrFileObjectReference? ReadNestedObjectReference(
+    internal static UnrFileObjectReference? ReadNestedObjectReference(
         PackageData package,
         byte[] payload,
         ref int position,
@@ -294,5 +411,28 @@ internal static class UnrStructPropertyReader
                 ObjectName = resolved.Value.ObjectName,
                 PackageName = resolved.Value.PackageName
             };
+    }
+
+    internal static void SkipNestedPayload(
+        byte[] payload,
+        ref int position,
+        StreamPropertyTag tag,
+        string className,
+        int exportIndex,
+        string objectName,
+        string parentName)
+    {
+        if (tag.Type == PackageReader.PropertyTypeBool)
+        {
+            return;
+        }
+
+        if (tag.DataSize < 0 || position + tag.DataSize > payload.Length)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) has invalid nested payload '{tag.Name}' in '{parentName}'.");
+        }
+
+        position += tag.DataSize;
     }
 }

@@ -33,6 +33,21 @@ public sealed class SceneParticleBuilder
             .Where(x => x is not null)
             .Cast<SceneSpriteEmitterLayerData>()
             .ToArray();
+        var meshLayers = emitter.Emitters
+            .Select(x => ResolveMeshEmitterLayer(x, byExportIndex))
+            .Where(x => x is not null)
+            .Cast<SceneMeshEmitterLayerData>()
+            .ToArray();
+        var beamLayers = emitter.Emitters
+            .Select(x => ResolveBeamEmitterLayer(x, byExportIndex))
+            .Where(x => x is not null)
+            .Cast<SceneBeamEmitterLayerData>()
+            .ToArray();
+        var vertMeshLayers = emitter.Emitters
+            .Select(x => ResolveVertMeshEmitterLayer(x, byExportIndex))
+            .Where(x => x is not null)
+            .Cast<SceneVertMeshEmitterLayerData>()
+            .ToArray();
 
         return new SceneParticleEmitterData
         {
@@ -47,8 +62,12 @@ public sealed class SceneParticleBuilder
             SunAffect = emitter.SunAffect,
             DynamicActorFilterState = emitter.DynamicActorFilterState,
             SwayRotationOrig = emitter.SwayRotationOrig,
+            TexModifyInfo = emitter.TexModifyInfo,
             EmitterReferences = layerRefs,
-            Layers = layers
+            Layers = layers,
+            MeshLayers = meshLayers,
+            BeamLayers = beamLayers,
+            VertMeshLayers = vertMeshLayers
         };
     }
 
@@ -56,46 +75,216 @@ public sealed class SceneParticleBuilder
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
+        return ResolveLayer<UnrSpriteEmitterObject, SceneSpriteEmitterLayerData>(reference, byExportIndex, sprite =>
+        {
+            var identity = CreateLayerIdentity(sprite);
+            var timed = CreateTimedLayerState(sprite);
+            var colorScaled = CreateColorScaledLayerState(sprite);
+
+            return new SceneSpriteEmitterLayerData
+            {
+                ExportIndex = identity.ExportIndex,
+                Name = identity.Name,
+                UnknownProperties = identity.UnknownProperties,
+                UseDirectionAs = sprite.UseDirectionAs,
+                Acceleration = sprite.Acceleration,
+                UseColorScale = sprite.UseColorScale,
+                Opacity = timed.Opacity,
+                FadeOutStartTime = timed.FadeOutStartTime,
+                FadeOut = timed.FadeOut,
+                MaxParticles = timed.MaxParticles,
+                WeatherSoundCheck = sprite.WeatherSoundCheck,
+                SpinParticles = sprite.SpinParticles,
+                SpinCCWorCW = sprite.SpinCCWorCW,
+                SpinsPerSecondRange = sprite.SpinsPerSecondRange,
+                StartSpinRange = sprite.StartSpinRange,
+                UseSizeScale = sprite.UseSizeScale,
+                UseRegularSizeScale = sprite.UseRegularSizeScale,
+                SizeScale = sprite.SizeScale,
+                StartSizeRange = sprite.StartSizeRange,
+                UniformSize = sprite.UniformSize,
+                DrawStyle = sprite.DrawStyle,
+                TextureReference = ToReferenceText(sprite.TextureReference),
+                LifetimeRange = timed.LifetimeRange,
+                StartVelocityRange = sprite.StartVelocityRange,
+                WarmupTicksPerSecond = timed.WarmupTicksPerSecond,
+                RelativeWarmupTime = timed.RelativeWarmupTime,
+                BlendBetweenSubdivisions = sprite.BlendBetweenSubdivisions,
+                ColorScale = colorScaled.ColorScale
+            };
+        });
+    }
+
+    private static SceneMeshEmitterLayerData? ResolveMeshEmitterLayer(
+        UnrFileObjectReference? reference,
+        IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
+    {
+        return ResolveLayer<UnrMeshEmitterObject, SceneMeshEmitterLayerData>(reference, byExportIndex, mesh =>
+        {
+            var identity = CreateLayerIdentity(mesh);
+            var timed = CreateTimedLayerState(mesh);
+            var fadeIn = CreateFadeInLayerState(mesh);
+            var colorScaled = CreateColorScaledLayerState(mesh);
+
+            return new SceneMeshEmitterLayerData
+            {
+                ExportIndex = identity.ExportIndex,
+                Name = identity.Name,
+                UnknownProperties = identity.UnknownProperties,
+                StaticMeshReference = ToReferenceText(mesh.StaticMeshReference),
+                UseMeshBlendMode = mesh.UseMeshBlendMode,
+                RenderTwoSided = mesh.RenderTwoSided,
+                Opacity = timed.Opacity,
+                FadeOutStartTime = timed.FadeOutStartTime,
+                FadeOut = timed.FadeOut,
+                FadeInEndTime = fadeIn.FadeInEndTime,
+                FadeIn = fadeIn.FadeIn,
+                MaxParticles = timed.MaxParticles,
+                SpinParticles = mesh.SpinParticles,
+                SpinsPerSecondRange = mesh.SpinsPerSecondRange,
+                StartSizeRange = mesh.StartSizeRange,
+                LifetimeRange = timed.LifetimeRange,
+                StartVelocityRange = mesh.StartVelocityRange,
+                WarmupTicksPerSecond = timed.WarmupTicksPerSecond,
+                RelativeWarmupTime = timed.RelativeWarmupTime,
+                ColorScale = colorScaled.ColorScale
+            };
+        });
+    }
+
+    private static SceneBeamEmitterLayerData? ResolveBeamEmitterLayer(
+        UnrFileObjectReference? reference,
+        IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
+    {
+        return ResolveLayer<UnrBeamEmitterObject, SceneBeamEmitterLayerData>(reference, byExportIndex, beam =>
+        {
+            var identity = CreateLayerIdentity(beam);
+            var timed = CreateTimedLayerState(beam);
+            var fadeIn = CreateFadeInLayerState(beam);
+            var colorScaled = CreateColorScaledLayerState(beam);
+
+            return new SceneBeamEmitterLayerData
+            {
+                ExportIndex = identity.ExportIndex,
+                Name = identity.Name,
+                UnknownProperties = identity.UnknownProperties,
+                TextureReference = ToReferenceText(beam.TextureReference),
+                DetermineEndPointBy = beam.DetermineEndPointBy,
+                ColorScale = colorScaled.ColorScale,
+                ColorMultiplierRange = beam.ColorMultiplierRange,
+                Opacity = timed.Opacity,
+                FadeOutStartTime = timed.FadeOutStartTime,
+                FadeOut = timed.FadeOut,
+                FadeInEndTime = fadeIn.FadeInEndTime,
+                FadeIn = fadeIn.FadeIn,
+                MaxParticles = timed.MaxParticles,
+                StartLocationRange = beam.StartLocationRange,
+                SphereRadiusRange = beam.SphereRadiusRange,
+                StartLocationPolarRange = beam.StartLocationPolarRange,
+                StartSizeRange = beam.StartSizeRange,
+                LifetimeRange = timed.LifetimeRange,
+                WarmupTicksPerSecond = timed.WarmupTicksPerSecond,
+                RelativeWarmupTime = timed.RelativeWarmupTime
+            };
+        });
+    }
+
+    private static SceneVertMeshEmitterLayerData? ResolveVertMeshEmitterLayer(
+        UnrFileObjectReference? reference,
+        IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
+    {
+        return ResolveLayer<UnrVertMeshEmitterObject, SceneVertMeshEmitterLayerData>(reference, byExportIndex, vertMesh =>
+        {
+            var identity = CreateLayerIdentity(vertMesh);
+            var timed = CreateTimedLayerState(vertMesh);
+            var fadeIn = CreateFadeInLayerState(vertMesh);
+            var colorScaled = CreateColorScaledLayerState(vertMesh);
+
+            return new SceneVertMeshEmitterLayerData
+            {
+                ExportIndex = identity.ExportIndex,
+                Name = identity.Name,
+                UnknownProperties = identity.UnknownProperties,
+                VertexMeshReference = ToReferenceText(vertMesh.VertexMeshReference),
+                UseMeshBlendMode = vertMesh.UseMeshBlendMode,
+                Acceleration = vertMesh.Acceleration,
+                UseColorScale = vertMesh.UseColorScale,
+                ColorScale = colorScaled.ColorScale,
+                ColorScaleRepeats = vertMesh.ColorScaleRepeats,
+                ColorMultiplierRange = vertMesh.ColorMultiplierRange,
+                Opacity = timed.Opacity,
+                FadeOutStartTime = timed.FadeOutStartTime,
+                FadeOut = timed.FadeOut,
+                FadeInEndTime = fadeIn.FadeInEndTime,
+                FadeIn = fadeIn.FadeIn,
+                CoordinateSystem = vertMesh.CoordinateSystem,
+                MaxParticles = timed.MaxParticles,
+                CheckLevelOfWeather = vertMesh.CheckLevelOfWeather,
+                WeatherEffect = vertMesh.WeatherEffect,
+                StartLocationRange = vertMesh.StartLocationRange,
+                UseRevolution = vertMesh.UseRevolution,
+                RevolutionsPerSecondRange = vertMesh.RevolutionsPerSecondRange,
+                SpinParticles = vertMesh.SpinParticles,
+                StartSpinRange = vertMesh.StartSpinRange,
+                StartSizeRange = vertMesh.StartSizeRange,
+                DrawStyle = vertMesh.DrawStyle,
+                LifetimeRange = timed.LifetimeRange,
+                StartVelocityRange = vertMesh.StartVelocityRange,
+                WarmupTicksPerSecond = timed.WarmupTicksPerSecond,
+                RelativeWarmupTime = timed.RelativeWarmupTime
+            };
+        });
+    }
+
+    private static TScene? ResolveLayer<TUnr, TScene>(
+        UnrFileObjectReference? reference,
+        IReadOnlyDictionary<int, UnrFileObject> byExportIndex,
+        Func<TUnr, TScene> factory)
+        where TUnr : UnrFileObject
+        where TScene : class
+    {
         if (reference?.ExportIndex is null)
         {
             return null;
         }
 
         if (!byExportIndex.TryGetValue(reference.ExportIndex.Value, out var objectValue) ||
-            objectValue is not UnrSpriteEmitterObject sprite)
+            objectValue is not TUnr layer)
         {
             return null;
         }
 
-        return new SceneSpriteEmitterLayerData
-        {
-            ExportIndex = sprite.ExportIndex,
-            Name = sprite.NameValue ?? sprite.ObjectName,
-            UseDirectionAs = sprite.UseDirectionAs,
-            Acceleration = sprite.Acceleration,
-            UseColorScale = sprite.UseColorScale,
-            Opacity = sprite.Opacity,
-            FadeOutStartTime = sprite.FadeOutStartTime,
-            FadeOut = sprite.FadeOut,
-            MaxParticles = sprite.MaxParticles,
-            WeatherSoundCheck = sprite.WeatherSoundCheck,
-            SpinParticles = sprite.SpinParticles,
-            SpinCCWorCW = sprite.SpinCCWorCW,
-            SpinsPerSecondRange = sprite.SpinsPerSecondRange,
-            StartSpinRange = sprite.StartSpinRange,
-            UseSizeScale = sprite.UseSizeScale,
-            UseRegularSizeScale = sprite.UseRegularSizeScale,
-            StartSizeRange = sprite.StartSizeRange,
-            UniformSize = sprite.UniformSize,
-            DrawStyle = sprite.DrawStyle,
-            TextureReference = ToReferenceText(sprite.TextureReference),
-            LifetimeRange = sprite.LifetimeRange,
-            StartVelocityRange = sprite.StartVelocityRange,
-            WarmupTicksPerSecond = sprite.WarmupTicksPerSecond,
-            RelativeWarmupTime = sprite.RelativeWarmupTime,
-            BlendBetweenSubdivisions = sprite.BlendBetweenSubdivisions,
-            UnknownProperties = sprite.UnknownProperties
-        };
+        return factory(layer);
+    }
+
+    private static SceneParticleLayerIdentity CreateLayerIdentity(IUnrParticleLayerObject layer)
+    {
+        return new SceneParticleLayerIdentity(
+            layer.ExportIndex,
+            layer.NameValue ?? layer.ObjectName,
+            layer.UnknownProperties);
+    }
+
+    private static SceneTimedLayerState CreateTimedLayerState(IUnrTimedParticleLayerObject layer)
+    {
+        return new SceneTimedLayerState(
+            layer.Opacity,
+            layer.FadeOutStartTime,
+            layer.FadeOut,
+            layer.MaxParticles,
+            layer.LifetimeRange,
+            layer.WarmupTicksPerSecond,
+            layer.RelativeWarmupTime);
+    }
+
+    private static SceneFadeInLayerState CreateFadeInLayerState(IUnrFadeInParticleLayerObject layer)
+    {
+        return new SceneFadeInLayerState(layer.FadeInEndTime, layer.FadeIn);
+    }
+
+    private static SceneColorScaledLayerState CreateColorScaledLayerState(IUnrColorScaledParticleLayerObject layer)
+    {
+        return new SceneColorScaledLayerState(layer.ColorScale);
     }
 
     private static string? ToReferenceText(UnrFileObjectReference? reference)
@@ -109,4 +298,25 @@ public sealed class SceneParticleBuilder
             ? reference.ObjectName
             : $"{reference.PackageName}.{reference.ObjectName}";
     }
+
+    private readonly record struct SceneParticleLayerIdentity(
+        int ExportIndex,
+        string Name,
+        UnrFileUnknownProperty[] UnknownProperties);
+
+    private readonly record struct SceneTimedLayerState(
+        float? Opacity,
+        float? FadeOutStartTime,
+        bool FadeOut,
+        int? MaxParticles,
+        UnrFloatRange? LifetimeRange,
+        float? WarmupTicksPerSecond,
+        float? RelativeWarmupTime);
+
+    private readonly record struct SceneFadeInLayerState(
+        float? FadeInEndTime,
+        bool FadeIn);
+
+    private readonly record struct SceneColorScaledLayerState(
+        UnrParticleColorScale[] ColorScale);
 }

@@ -2,9 +2,9 @@ using System.Numerics;
 
 namespace L2Viewer.UnrFile;
 
-internal static class UnrEmitterObjectReader
+internal static class UnrBeamEmitterObjectReader
 {
-    public static UnrEmitterObject Read(
+    public static UnrBeamEmitterObject Read(
         PackageData package,
         ExportEntry export,
         int exportIndex,
@@ -12,6 +12,7 @@ internal static class UnrEmitterObjectReader
         string objectName)
     {
         using var reader = PackageReader.OpenExportReader(package, export);
+        reader.ReadStateFrameIfPresent(export.ObjectFlags);
         Vector3? location = null;
         Vector3? rotation = null;
         var drawScale = 1f;
@@ -31,12 +32,23 @@ internal static class UnrEmitterObjectReader
         UnrFileObjectReference? textureReference = null;
         UnrFileObjectReference? physicsVolumeReference = null;
         UnrFileObjectReference? staticMeshReference = null;
-        UnrFileObjectReference[] emitters = [];
-        var dynamicActorFilterState = false;
-        var sunAffect = false;
-        var directional = false;
-        Vector3? swayRotationOrig = null;
-        UnrTextureModifyInfo? texModifyInfo = null;
+        byte? determineEndPointBy = null;
+        var colorScale = new List<UnrParticleColorScale>();
+        UnrRangeVector? colorMultiplierRange = null;
+        float? opacity = null;
+        float? fadeOutStartTime = null;
+        var fadeOut = false;
+        float? fadeInEndTime = null;
+        var fadeIn = false;
+        int? maxParticles = null;
+        string? nameValue = null;
+        UnrRangeVector? startLocationRange = null;
+        UnrFloatRange? sphereRadiusRange = null;
+        UnrRangeVector? startLocationPolarRange = null;
+        UnrRangeVector? startSizeRange = null;
+        UnrFloatRange? lifetimeRange = null;
+        float? warmupTicksPerSecond = null;
+        float? relativeWarmupTime = null;
         var unknownProperties = new List<UnrFileUnknownProperty>();
 
         void AddUnknownProperty(StreamPropertyTag tag)
@@ -55,14 +67,15 @@ internal static class UnrEmitterObjectReader
                 case PackageReader.PropertyTypeByte:
                     unknownProperties.Add(CreateUnknownProperty(tag, byteValue: reader.ReadByteProperty(tag, className, exportIndex, objectName)));
                     return;
-                case PackageReader.PropertyTypeName:
-                    unknownProperties.Add(CreateUnknownProperty(tag, nameValue: reader.ReadNameProperty(package, tag, className, exportIndex, objectName)));
-                    return;
                 case PackageReader.PropertyTypeObject:
                     unknownProperties.Add(CreateUnknownProperty(tag, objectReference: reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName)));
                     return;
                 case PackageReader.PropertyTypeStruct when tag.StructName.Is("Scale"):
                     unknownProperties.Add(CreateUnknownProperty(tag, scaleValue: reader.ReadScaleProperty(package, tag, className, exportIndex, objectName)));
+                    return;
+                case PackageReader.PropertyTypeString:
+                case 13:
+                    unknownProperties.Add(CreateUnknownProperty(tag, nameValue: reader.ReadStringProperty(tag, className, exportIndex, objectName)));
                     return;
                 default:
                     unknownProperties.Add(CreateUnknownProperty(tag, rawHex: UnrCompat.ToHexString(reader.SkipPropertyPayload(tag, className, exportIndex, objectName, package.Names))));
@@ -101,7 +114,7 @@ internal static class UnrEmitterObjectReader
 
         void ReadProperty(StreamPropertyTag tag)
         {
-            if (!Enum.TryParse<UnrEmitterPropertyKind>(tag.Name, ignoreCase: true, out var kind))
+            if (!Enum.TryParse<UnrBeamEmitterPropertyKind>(tag.Name, ignoreCase: true, out var kind))
             {
                 AddUnknownProperty(tag);
                 return;
@@ -109,88 +122,120 @@ internal static class UnrEmitterObjectReader
 
             switch (kind)
             {
-                case UnrEmitterPropertyKind.Location:
+                case UnrBeamEmitterPropertyKind.Location:
                     location = reader.ReadVectorProperty(tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Rotation:
+                case UnrBeamEmitterPropertyKind.Rotation:
                     rotation = reader.ReadRotatorProperty(tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.DrawScale:
+                case UnrBeamEmitterPropertyKind.DrawScale:
                     drawScale = reader.ReadFloatProperty(tag, className, exportIndex, objectName) ?? drawScale;
                     return;
-                case UnrEmitterPropertyKind.DrawScale3D:
+                case UnrBeamEmitterPropertyKind.DrawScale3D:
                     drawScale3D = reader.ReadVectorProperty(tag, className, exportIndex, objectName) ?? drawScale3D;
                     return;
-                case UnrEmitterPropertyKind.PrePivot:
+                case UnrBeamEmitterPropertyKind.PrePivot:
                     prePivot = reader.ReadVectorProperty(tag, className, exportIndex, objectName) ?? prePivot;
                     return;
-                case UnrEmitterPropertyKind.MainScale:
+                case UnrBeamEmitterPropertyKind.MainScale:
                     mainScale = reader.ReadScaleProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.PostScale:
+                case UnrBeamEmitterPropertyKind.PostScale:
                     postScale = reader.ReadScaleProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.TempScale:
+                case UnrBeamEmitterPropertyKind.TempScale:
                     tempScale = reader.ReadScaleProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Tag:
+                case UnrBeamEmitterPropertyKind.Tag:
                     tagName = reader.ReadNameProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Event:
+                case UnrBeamEmitterPropertyKind.Event:
                     eventName = reader.ReadNameProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Group:
+                case UnrBeamEmitterPropertyKind.Group:
                     groupName = reader.ReadNameProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Brush:
+                case UnrBeamEmitterPropertyKind.Brush:
                     brushReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Base:
+                case UnrBeamEmitterPropertyKind.Base:
                     baseReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Level:
+                case UnrBeamEmitterPropertyKind.Level:
                     levelReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Owner:
+                case UnrBeamEmitterPropertyKind.Owner:
                     ownerReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Mesh:
+                case UnrBeamEmitterPropertyKind.Mesh:
                     meshReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Texture:
+                case UnrBeamEmitterPropertyKind.Texture:
                     textureReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.PhysicsVolume:
+                case UnrBeamEmitterPropertyKind.PhysicsVolume:
                     physicsVolumeReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.StaticMesh:
+                case UnrBeamEmitterPropertyKind.StaticMesh:
                     staticMeshReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Emitters:
-                    emitters = reader.ReadObjectReferenceArrayProperty(package, tag, className, exportIndex, objectName);
+                case UnrBeamEmitterPropertyKind.DetermineEndPointBy:
+                    determineEndPointBy = reader.ReadByteProperty(tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.bDynamicActorFilterState:
-                    dynamicActorFilterState = ReadStrictBool(tag, className, exportIndex, objectName);
+                case UnrBeamEmitterPropertyKind.ColorScale:
+                    colorScale.AddRange(UnrParticleStructPropertyReader.ReadParticleColorScaleProperties(package, reader, tag, className, exportIndex, objectName));
                     return;
-                case UnrEmitterPropertyKind.bSunAffect:
-                    sunAffect = ReadStrictBool(tag, className, exportIndex, objectName);
+                case UnrBeamEmitterPropertyKind.ColorMultiplierRange:
+                    colorMultiplierRange = UnrStructPropertyReader.ReadRangeVectorProperty(package, reader, tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.bDirectional:
-                    directional = ReadStrictBool(tag, className, exportIndex, objectName);
+                case UnrBeamEmitterPropertyKind.Opacity:
+                    opacity = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.SwayRotationOrig:
-                    swayRotationOrig = reader.ReadRotatorProperty(tag, className, exportIndex, objectName);
+                case UnrBeamEmitterPropertyKind.FadeOutStartTime:
+                    fadeOutStartTime = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
                     return;
-                case UnrEmitterPropertyKind.Region:
+                case UnrBeamEmitterPropertyKind.FadeOut:
+                    fadeOut = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.FadeInEndTime:
+                    fadeInEndTime = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.FadeIn:
+                    fadeIn = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.MaxParticles:
+                    maxParticles = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.Name:
+                    nameValue = reader.ReadStringProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.StartLocationRange:
+                    startLocationRange = UnrStructPropertyReader.ReadRangeVectorProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.SphereRadiusRange:
+                    sphereRadiusRange = UnrStructPropertyReader.ReadRangeProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.StartLocationPolarRange:
+                    startLocationPolarRange = UnrStructPropertyReader.ReadRangeVectorProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.StartSizeRange:
+                    startSizeRange = UnrStructPropertyReader.ReadRangeVectorProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.LifetimeRange:
+                    lifetimeRange = UnrStructPropertyReader.ReadRangeProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.WarmupTicksPerSecond:
+                    warmupTicksPerSecond = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.RelativeWarmupTime:
+                    relativeWarmupTime = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrBeamEmitterPropertyKind.BeamEndPoints:
                     AddUnknownProperty(tag);
-                    return;
-                case UnrEmitterPropertyKind.TexModifyInfo:
-                    texModifyInfo = UnrStructPropertyReader.ReadTextureModifyInfoProperty(package, reader, tag, className, exportIndex, objectName);
                     return;
             }
         }
 
-        reader.ReadStateFrameIfPresent(export.ObjectFlags);
         var hasTerminatingNone = false;
         while (reader.BaseStream.Position < reader.BaseStream.Length)
         {
@@ -211,8 +256,30 @@ internal static class UnrEmitterObjectReader
             throw new PackageReadException($"{className} export {exportIndex} ({objectName}) has no terminating None property before EOF.");
         }
 
+        void PromoteObjectReference(string propertyName, ref UnrFileObjectReference? value)
+        {
+            if (value is not null)
+            {
+                return;
+            }
+
+            var index = unknownProperties.FindIndex(x =>
+                x.ObjectReference is not null &&
+                x.Name.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                return;
+            }
+
+            value = unknownProperties[index].ObjectReference;
+            unknownProperties.RemoveAt(index);
+        }
+
+        PromoteObjectReference("Texture", ref textureReference);
+        PromoteObjectReference("Mesh", ref meshReference);
+
         reader.EnsureExportFullyConsumed(className, exportIndex, objectName);
-        return new UnrEmitterObject
+        return new UnrBeamEmitterObject
         {
             ExportIndex = exportIndex,
             ClassName = className,
@@ -236,12 +303,23 @@ internal static class UnrEmitterObjectReader
             TextureReference = textureReference,
             PhysicsVolumeReference = physicsVolumeReference,
             StaticMeshReference = staticMeshReference,
-            Emitters = emitters,
-            DynamicActorFilterState = dynamicActorFilterState,
-            SunAffect = sunAffect,
-            Directional = directional,
-            SwayRotationOrig = swayRotationOrig,
-            TexModifyInfo = texModifyInfo,
+            DetermineEndPointBy = determineEndPointBy,
+            ColorScale = colorScale.OrderBy(x => x.ArrayIndex).ToArray(),
+            ColorMultiplierRange = colorMultiplierRange,
+            Opacity = opacity,
+            FadeOutStartTime = fadeOutStartTime,
+            FadeOut = fadeOut,
+            FadeInEndTime = fadeInEndTime,
+            FadeIn = fadeIn,
+            MaxParticles = maxParticles,
+            NameValue = nameValue,
+            StartLocationRange = startLocationRange,
+            SphereRadiusRange = sphereRadiusRange,
+            StartLocationPolarRange = startLocationPolarRange,
+            StartSizeRange = startSizeRange,
+            LifetimeRange = lifetimeRange,
+            WarmupTicksPerSecond = warmupTicksPerSecond,
+            RelativeWarmupTime = relativeWarmupTime,
             UnknownProperties = unknownProperties.ToArray()
         };
     }
@@ -256,7 +334,7 @@ internal static class UnrEmitterObjectReader
         return tag.BoolValue;
     }
 
-    private enum UnrEmitterPropertyKind
+    private enum UnrBeamEmitterPropertyKind
     {
         Location,
         Rotation,
@@ -272,17 +350,28 @@ internal static class UnrEmitterObjectReader
         Brush,
         Base,
         Level,
-        Region,
         Owner,
         Mesh,
         Texture,
         PhysicsVolume,
         StaticMesh,
-        Emitters,
-        bDynamicActorFilterState,
-        bSunAffect,
-        bDirectional,
-        SwayRotationOrig,
-        TexModifyInfo
+        BeamEndPoints,
+        DetermineEndPointBy,
+        ColorScale,
+        ColorMultiplierRange,
+        Opacity,
+        FadeOutStartTime,
+        FadeOut,
+        FadeInEndTime,
+        FadeIn,
+        MaxParticles,
+        Name,
+        StartLocationRange,
+        SphereRadiusRange,
+        StartLocationPolarRange,
+        StartSizeRange,
+        LifetimeRange,
+        WarmupTicksPerSecond,
+        RelativeWarmupTime
     }
 }

@@ -25,6 +25,26 @@ public sealed class UnrTextureModifyInfo
     public int? ColorOp { get; init; }
 }
 
+public sealed class UnrParticleColorScale
+{
+    public required int ArrayIndex { get; init; }
+    public int Type { get; init; }
+    public string? StructName { get; init; }
+    public float? RelativeTime { get; init; }
+    public UnrFileColor? Color { get; init; }
+    public string? RawHex { get; init; }
+}
+
+public sealed class UnrParticleSizeScale
+{
+    public required int ArrayIndex { get; init; }
+    public int Type { get; init; }
+    public string? StructName { get; init; }
+    public float? RelativeTime { get; init; }
+    public float? RelativeSize { get; init; }
+    public string? RawHex { get; init; }
+}
+
 public sealed class UnrAccessoryTypeEntry
 {
     public int? Depth { get; init; }
@@ -62,6 +82,7 @@ public sealed class UnrFileUnknownProperty
     public required string Name { get; init; }
     public required int Type { get; init; }
     public required int DataSize { get; init; }
+    public int ArrayIndex { get; init; }
     public string? StructName { get; init; }
     public bool BoolValue { get; init; }
     public byte? ByteValue { get; init; }

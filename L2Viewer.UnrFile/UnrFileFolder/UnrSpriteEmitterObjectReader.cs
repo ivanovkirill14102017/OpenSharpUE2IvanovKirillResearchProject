@@ -27,6 +27,7 @@ internal static class UnrSpriteEmitterObjectReader
         UnrRangeVector? startSpinRange = null;
         var useSizeScale = false;
         var useRegularSizeScale = false;
+        var sizeScale = new List<UnrParticleSizeScale>();
         UnrRangeVector? startSizeRange = null;
         var uniformSize = false;
         byte? drawStyle = null;
@@ -36,6 +37,7 @@ internal static class UnrSpriteEmitterObjectReader
         float? warmupTicksPerSecond = null;
         float? relativeWarmupTime = null;
         var blendBetweenSubdivisions = false;
+        var colorScale = new List<UnrParticleColorScale>();
         var unknownProperties = new List<UnrFileUnknownProperty>();
 
         void AddUnknownProperty(StreamPropertyTag tag)
@@ -85,6 +87,7 @@ internal static class UnrSpriteEmitterObjectReader
                 Name = tag.Name,
                 Type = tag.Type,
                 DataSize = tag.DataSize,
+                ArrayIndex = tag.ArrayIndex,
                 StructName = tag.StructName,
                 BoolValue = tag.BoolValue,
                 ByteValue = byteValue,
@@ -179,8 +182,10 @@ internal static class UnrSpriteEmitterObjectReader
                     blendBetweenSubdivisions = ReadStrictBool(tag, className, exportIndex, objectName);
                     return;
                 case UnrSpriteEmitterPropertyKind.ColorScale:
+                    colorScale.AddRange(UnrParticleStructPropertyReader.ReadParticleColorScaleProperties(package, reader, tag, className, exportIndex, objectName));
+                    return;
                 case UnrSpriteEmitterPropertyKind.SizeScale:
-                    AddUnknownProperty(tag);
+                    sizeScale.AddRange(UnrParticleStructPropertyReader.ReadParticleSizeScaleProperties(package, reader, tag, className, exportIndex, objectName));
                     return;
             }
         }
@@ -226,6 +231,7 @@ internal static class UnrSpriteEmitterObjectReader
             StartSpinRange = startSpinRange,
             UseSizeScale = useSizeScale,
             UseRegularSizeScale = useRegularSizeScale,
+            SizeScale = sizeScale.OrderBy(x => x.ArrayIndex).ToArray(),
             StartSizeRange = startSizeRange,
             UniformSize = uniformSize,
             DrawStyle = drawStyle,
@@ -235,6 +241,7 @@ internal static class UnrSpriteEmitterObjectReader
             WarmupTicksPerSecond = warmupTicksPerSecond,
             RelativeWarmupTime = relativeWarmupTime,
             BlendBetweenSubdivisions = blendBetweenSubdivisions,
+            ColorScale = colorScale.OrderBy(x => x.ArrayIndex).ToArray(),
             UnknownProperties = unknownProperties.ToArray()
         };
     }

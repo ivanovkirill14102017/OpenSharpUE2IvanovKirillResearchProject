@@ -29,6 +29,7 @@ internal static class UnrMeshEmitterObjectReader
         UnrRangeVector? startVelocityRange = null;
         float? warmupTicksPerSecond = null;
         float? relativeWarmupTime = null;
+        var colorScale = new List<UnrParticleColorScale>();
         var unknownProperties = new List<UnrFileUnknownProperty>();
 
         void AddUnknownProperty(StreamPropertyTag tag)
@@ -75,6 +76,7 @@ internal static class UnrMeshEmitterObjectReader
                 Name = tag.Name,
                 Type = tag.Type,
                 DataSize = tag.DataSize,
+                ArrayIndex = tag.ArrayIndex,
                 StructName = tag.StructName,
                 BoolValue = tag.BoolValue,
                 ByteValue = byteValue,
@@ -148,7 +150,7 @@ internal static class UnrMeshEmitterObjectReader
                     relativeWarmupTime = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
                     return;
                 case UnrMeshEmitterPropertyKind.ColorScale:
-                    AddUnknownProperty(tag);
+                    colorScale.AddRange(UnrParticleStructPropertyReader.ReadParticleColorScaleProperties(package, reader, tag, className, exportIndex, objectName));
                     return;
             }
         }
@@ -196,6 +198,7 @@ internal static class UnrMeshEmitterObjectReader
             StartVelocityRange = startVelocityRange,
             WarmupTicksPerSecond = warmupTicksPerSecond,
             RelativeWarmupTime = relativeWarmupTime,
+            ColorScale = colorScale.OrderBy(x => x.ArrayIndex).ToArray(),
             UnknownProperties = unknownProperties.ToArray()
         };
     }
