@@ -23,9 +23,9 @@ public static class PackageReader
     public const int PropertyTypeClass = 8;
     public const int PropertyTypeArray = 9;
     public const int PropertyTypeStruct = 10;
-    private static readonly byte[] Prefix111 = Encoding.Unicode.GetBytes("Lineage2Ver111");
-    private static readonly byte[] Prefix121 = Encoding.Unicode.GetBytes("Lineage2Ver121");
-    private static readonly byte[] Prefix413 = Encoding.Unicode.GetBytes("Lineage2Ver413");
+    private static readonly byte[] Prefix111 = Encoding.Unicode.GetBytes(Lineage2FileProfiles.Ver111.Wrapper);
+    private static readonly byte[] Prefix121 = Encoding.Unicode.GetBytes(Lineage2FileProfiles.Ver121.Wrapper);
+    private static readonly byte[] Prefix413 = Encoding.Unicode.GetBytes(Lineage2FileProfiles.Ver413Legacy.Wrapper);
 
     public static PackageData LoadPackage(string path)
     {
@@ -421,7 +421,7 @@ public static class PackageReader
         if (raw.AsSpan().StartsWith(Prefix111))
         {
             var body = raw[Prefix111.Length..];
-            var key = DetectXorKeyForPackage(body) ?? 0xAC;
+            var key = DetectXorKeyForPackage(body) ?? Convert.ToInt32(Lineage2FileProfiles.Ver111.XorKeyHex, 16);
             return (XorBuffer(body, key), $"Lineage2Ver111 (xor=0x{key:X2})");
         }
 
@@ -465,7 +465,7 @@ public static class PackageReader
 
         if (prefixSpan.StartsWith(Prefix111))
         {
-            return new PackageBodySpec(Prefix111.Length, DetectXorKeyForPackage(fileStream, Prefix111.Length) ?? 0xAC, "Lineage2Ver111");
+            return new PackageBodySpec(Prefix111.Length, DetectXorKeyForPackage(fileStream, Prefix111.Length) ?? Convert.ToInt32(Lineage2FileProfiles.Ver111.XorKeyHex, 16), "Lineage2Ver111");
         }
 
         if (prefixSpan.StartsWith(Prefix121))

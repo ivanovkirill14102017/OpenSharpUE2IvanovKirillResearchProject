@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using HelixToolkit.Wpf.SharpDX;
+using L2Viewer.DatFile;
 using L2Viewer.PackageCore;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.SceneDomain.Services;
@@ -88,7 +89,7 @@ internal sealed class MainWindowLoadingController
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Unreal Packages|*.utx;*.usx;*.ukx;*.u;*.unr|All Files|*.*",
+            Filter = "Client Files|*.utx;*.usx;*.ukx;*.u;*.unr;*.dat|All Files|*.*",
             Title = "Open Unreal Package"
         };
 
@@ -210,6 +211,13 @@ internal sealed class MainWindowLoadingController
             return;
         }
 
+        var extension = Path.GetExtension(path);
+        if (string.Equals(extension, ".dat", StringComparison.OrdinalIgnoreCase))
+        {
+            await LoadDatDocumentAsync(path, autoSelectInTree);
+            return;
+        }
+
         _packageLoadCts?.Cancel();
         _packageLoadCts?.Dispose();
         var cts = new CancellationTokenSource();
@@ -285,6 +293,81 @@ internal sealed class MainWindowLoadingController
         }
         catch (OperationCanceledException)
         {
+        }
+        catch (Exception ex)
+        {
+            _owner.CurrentDocument = null;
+            _owner.CurrentPackagePath = null;
+            _renderer.CurrentTerrainPreview = null;
+            _renderer.CurrentStaticMeshDefinition = null;
+            _renderer.ClearPropSceneState();
+            _renderer.ClearWaterSceneState();
+            _renderer.ClearPolySceneState();
+            _owner.VolumeSceneGroup.Children.Clear();
+            UpdateDocumentSpecificUi(null);
+            NextStaticMeshButton.Visibility = Visibility.Collapsed;
+            _owner.ExportNodes.Clear();
+            PackageTitleTextBlock.Text = Path.GetFileName(path);
+            PackageMetaTextBlock.Text = string.Empty;
+            StatusTextBlock.Text = $"Open failed: {ex.Message}";
+            DetailsTextBox.Text = ex.ToString();
+            _renderer.ClearMapInfoPanel();
+        }
+        finally
+        {
+            _owner.SetBusyState(false);
+            System.Windows.Input.Mouse.OverrideCursor = null;
+            _owner.EndOperation(op);
+        }
+    }
+
+    private async Task LoadDatDocumentAsync(string path, bool autoSelectInTree)
+    {
+        _owner.SetBusyState(true);
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        var op = _owner.BeginOperation($"Opening DAT {Path.GetFileName(path)}");
+        StatusTextBlock.Text = $"Opening {Path.GetFileName(path)}...";
+        DetailsTextBox.Text = string.Empty;
+        _renderer.CurrentStaticMeshDefinition = null;
+        _renderer.ShowStaticMeshCollision = false;
+        ShowCollisionCheckBox.IsChecked = false;
+        _renderer.ClearPropSceneState();
+        _renderer.ClearWaterSceneState();
+        _renderer.ClearPolySceneState();
+        _owner.VolumeSceneGroup.Children.Clear();
+        _renderer.ResetScene();
+        _renderer.ShowEmptyPreview();
+        ClearExportSelection();
+        _mapCameraTargets.Clear();
+        _mapCameraTargetIndex = -1;
+
+        try
+        {
+            var document = await Task.Run(() => DatFileReader.ReadDocument(path));
+            var json = await Task.Run(() => FileInspectionJsonSerializer.Serialize(document));
+
+            _owner.CurrentDocument = null;
+            _owner.CurrentPackagePath = path;
+            _renderer.CurrentTerrainPreview = null;
+            _renderer.ClearPropSceneState();
+            _renderer.ClearWaterSceneState();
+            _renderer.ClearPolySceneState();
+            _owner.VolumeSceneGroup.Children.Clear();
+            UpdateDocumentSpecificUi(path);
+            NextStaticMeshButton.Visibility = Visibility.Collapsed;
+            _owner.ExportNodes.Clear();
+            PackageTitleTextBlock.Text = Path.GetFileName(path);
+            PackageMetaTextBlock.Text = document.GetType().Name;
+            PreviewTitleTextBlock.Text = string.Empty;
+            PreviewSubtitleTextBlock.Text = string.Empty;
+            DetailsTextBox.Text = json;
+            _renderer.ClearMapInfoPanel();
+            StatusTextBlock.Text = $"Loaded {Path.GetFileName(path)}.";
+
+            if (autoSelectInTree)
+            {
+                FileTreeService.TrySelectPathInTree(_owner.RootItems, path);
+            }
         }
         catch (Exception ex)
         {

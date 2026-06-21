@@ -10,7 +10,7 @@ namespace L2Viewer.Wpf;
 
 public partial class MainWindow : Window
 {
-    private static readonly string[] SupportedExtensions = [".unr", ".utx", ".usx", ".ukx", ".u"];
+    private static readonly string[] SupportedExtensions = [".unr", ".utx", ".usx", ".ukx", ".u", ".dat"];
 
     private readonly ObservableCollection<ExportTreeNode> _exportNodes = [];
     private readonly ObservableCollection<FileTreeItem> _rootItems = [];

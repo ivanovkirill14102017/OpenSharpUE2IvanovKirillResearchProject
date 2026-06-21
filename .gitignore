@@ -436,6 +436,7 @@ bin
 obj_verify
 .tmp*
 L2Viewer.UnrFile.Cli
+L2Viewer.ClientFile.Cli
 _umodel_tools_ref
 _umodel_ref
 __pycache__

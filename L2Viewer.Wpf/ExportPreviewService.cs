@@ -1,5 +1,6 @@
 using L2Viewer.PackageCore;
 using L2Viewer.SceneDomain.Services;
+using L2Viewer.UFile;
 using UtxTextureCodec = L2Viewer.UtxFile.TextureCodec;
 
 namespace L2Viewer.Wpf;
@@ -102,12 +103,15 @@ internal sealed class ExportPreviewService
     private void InitializePreviewState(PackageExportInfo exportInfo)
     {
         var isStaticMeshExport = exportInfo.ClassName.Is(UnrealClassNames.StaticMesh);
+        var isTextureExport = exportInfo.ClassName.Is(UnrealClassNames.Texture);
         _owner.StaticMeshOptionsPanel.Visibility = isStaticMeshExport ? Visibility.Visible : Visibility.Collapsed;
         _owner.PreviewTitleTextBlockControl.Text = exportInfo.ObjectName;
         _owner.PreviewSubtitleTextBlockControl.Text = string.Empty;
         _renderer.ShowPreviewForCurrentMode();
         _owner.StatusTextBlock.Text = $"Loading {exportInfo.ObjectName}...";
-        _owner.DetailsTextBox.Text = PackageSummaryBuilder.BuildExportSummary(_owner.CurrentDocument!, exportInfo);
+        _owner.DetailsTextBox.Text = isTextureExport
+            ? string.Empty
+            : TechnicalDetailsBuilder.BuildPackageExportJson(_owner.CurrentDocument!, exportInfo);
         _skeletalAnimationController.Reset();
 
         if (!isStaticMeshExport)
@@ -120,6 +124,12 @@ internal sealed class ExportPreviewService
 
     private async Task PreviewExportByClassAsync(PackageExportInfo exportInfo, CancellationToken token)
     {
+        if (Path.GetExtension(_owner.CurrentPackagePath).Is(".u"))
+        {
+            await PreviewUPackageExportAsync(exportInfo, token);
+            return;
+        }
+
         if (exportInfo.ClassName.Is(UnrealClassNames.Texture))
         {
             await PreviewTextureExportAsync(exportInfo, token);
@@ -144,7 +154,24 @@ internal sealed class ExportPreviewService
             return;
         }
 
+        if (!Path.GetExtension(_owner.CurrentPackagePath).Is(".unr"))
+        {
+            PreviewMetadataOnly(exportInfo);
+            return;
+        }
+
         await PreviewActorOrMetadataAsync(exportInfo, token);
+    }
+
+    private async Task PreviewUPackageExportAsync(PackageExportInfo exportInfo, CancellationToken token)
+    {
+        var details = await Task.Run(() =>
+            TechnicalDetailsBuilder.BuildUExportDetails(UFileReader.Read(_owner.CurrentDocument!.Package.Path), exportInfo.Index), token);
+        token.ThrowIfCancellationRequested();
+
+        _owner.DetailsTextBox.Text = details;
+        _owner.StatusTextBlock.Text = $"Loaded export {exportInfo.ObjectName}.";
+        _renderer.ShowPreviewForCurrentMode();
     }
 
     private async Task PreviewTextureExportAsync(PackageExportInfo exportInfo, CancellationToken token)
@@ -165,7 +192,7 @@ internal sealed class ExportPreviewService
         }
 
         _owner.TextureImage.Source = _renderer.CreateBitmap(texture);
-        _owner.DetailsTextBox.Text = "unsupport debug show, maybe later";
+        _owner.DetailsTextBox.Text = string.Empty;
         _owner.StatusTextBlock.Text = $"Decoded texture {texture.Name}: {texture.Width}x{texture.Height}.";
         if (!_renderer.TryRenderCurrentMapScene())
         {
@@ -272,10 +299,21 @@ internal sealed class ExportPreviewService
 
     private async Task PreviewSkeletalMeshExportAsync(PackageExportInfo exportInfo, CancellationToken token)
     {
+        SceneSkeletalPreviewData animatedPreview;
+        try
+        {
+            animatedPreview = await Task.Run(() =>
+                new SceneSkeletalMeshResolver().ResolveExport(_owner.CurrentDocument!.Package.Path, exportInfo.Index), token);
+            token.ThrowIfCancellationRequested();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("does not reference an animation object", StringComparison.OrdinalIgnoreCase))
+        {
+            PreviewMetadataOnly(exportInfo);
+            _owner.StatusTextBlock.Text = $"Skeletal mesh {exportInfo.ObjectName} has no animation reference. Showing metadata only.";
+            return;
+        }
+
         var clientRoot = (_owner.FindName("ClientRootTextBox") as System.Windows.Controls.TextBox)?.Text.Trim() ?? string.Empty;
-        var animatedPreview = await Task.Run(() =>
-            new SceneSkeletalMeshResolver().ResolveExport(_owner.CurrentDocument!.Package.Path, exportInfo.Index), token);
-        token.ThrowIfCancellationRequested();
 
         var session = animatedPreview.Session;
         _renderer.SceneTextureManager = string.IsNullOrWhiteSpace(clientRoot) ? null : new BspTextureManager(clientRoot);
@@ -338,7 +376,12 @@ internal sealed class ExportPreviewService
             return;
         }
 
-        _owner.DetailsTextBox.Text = PackageSummaryBuilder.BuildExportSummary(_owner.CurrentDocument!, exportInfo);
+        PreviewMetadataOnly(exportInfo);
+    }
+
+    private void PreviewMetadataOnly(PackageExportInfo exportInfo)
+    {
+        _owner.DetailsTextBox.Text = TechnicalDetailsBuilder.BuildPackageExportJson(_owner.CurrentDocument!, exportInfo);
         _owner.StatusTextBlock.Text = $"Export {exportInfo.ObjectName} is loaded as metadata only.";
         _renderer.ShowPreviewForCurrentMode();
     }

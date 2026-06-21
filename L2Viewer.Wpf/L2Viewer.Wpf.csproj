@@ -12,6 +12,7 @@
     <ProjectReference Include="..\L2Viewer.SceneDomain\L2Viewer.SceneDomain.csproj" />
     <ProjectReference Include="..\L2Viewer.UnrFile\L2Viewer.UnrFile.csproj" />
     <PackageReference Include="HelixToolkit.Wpf.SharpDX" Version="3.1.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +20,8 @@
     <ProjectReference Include="..\L2Viewer.UkxFile\L2Viewer.UkxFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UtxFile\L2Viewer.UtxFile.csproj" />
     <ProjectReference Include="..\L2Viewer.PackageCore\L2Viewer.PackageCore.csproj" />
+    <ProjectReference Include="..\L2Viewer.DatFile\L2Viewer.DatFile.csproj" />
+    <ProjectReference Include="..\L2Viewer.UFile\L2Viewer.UFile.csproj" />
   </ItemGroup>
 
 </Project>
