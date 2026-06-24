@@ -18,6 +18,14 @@ public static class SceneStableNameUtility
         return BuildActorStableName(prefix: null, unr.FilePath, actor.ObjectName, actor.ClassName, actor.ExportIndex);
     }
     public static string BuildActorStableName(
+        string prefix,
+        UnrFile.UnrFile unr,
+        SceneParticleBuilder.SceneParticleLayerIdentity actor)
+    {
+        return BuildActorStableName(prefix, unr.FilePath, actorName: null, className: null, actor.ExportIndex);
+    }
+    
+    public static string BuildActorStableName(
         string mapPath,
         BspDiagnosticModel model)
     {
@@ -70,4 +78,5 @@ public static class SceneStableNameUtility
     {
         return string.Join("_", [SanitizeStableName(className), SanitizeStableName(actorName)]);
     }
+
 }

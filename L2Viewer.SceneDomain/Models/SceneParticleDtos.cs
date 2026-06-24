@@ -24,6 +24,7 @@ public sealed class SceneParticleEmitterData
 
 public abstract class SceneParticleLayerData
 {
+    public required string StableName { get; init; }
     public required int ExportIndex { get; init; }
     public required string Name { get; init; }
     public UnrFileUnknownProperty[] UnknownProperties { get; init; } = [];

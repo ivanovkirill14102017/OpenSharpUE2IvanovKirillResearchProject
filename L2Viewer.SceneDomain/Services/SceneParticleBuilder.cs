@@ -30,22 +30,22 @@ public sealed class SceneParticleBuilder
             .ToArray();
 
         var layers = emitter.Emitters
-            .Select(x => ResolveSpriteEmitterLayer(x, byExportIndex))
+            .Select(x => ResolveSpriteEmitterLayer(unr, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneSpriteEmitterLayerData>()
             .ToArray();
         var meshLayers = emitter.Emitters
-            .Select(x => ResolveMeshEmitterLayer(x, byExportIndex))
+            .Select(x => ResolveMeshEmitterLayer(unr, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneMeshEmitterLayerData>()
             .ToArray();
         var beamLayers = emitter.Emitters
-            .Select(x => ResolveBeamEmitterLayer(x, byExportIndex))
+            .Select(x => ResolveBeamEmitterLayer(unr, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneBeamEmitterLayerData>()
             .ToArray();
         var vertMeshLayers = emitter.Emitters
-            .Select(x => ResolveVertMeshEmitterLayer(x, byExportIndex))
+            .Select(x => ResolveVertMeshEmitterLayer(unr, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneVertMeshEmitterLayerData>()
             .ToArray();
@@ -74,6 +74,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneSpriteEmitterLayerData? ResolveSpriteEmitterLayer(
+        UnrFile.UnrFile unr,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -85,6 +86,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneSpriteEmitterLayerData
             {
+                StableName = SceneStableNameUtility.BuildActorStableName("SpriteEm", unr, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -118,6 +120,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneMeshEmitterLayerData? ResolveMeshEmitterLayer(
+        UnrFile.UnrFile unr,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -130,6 +133,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneMeshEmitterLayerData
             {
+                StableName = SceneStableNameUtility.BuildActorStableName("MeshEm",unr, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -155,6 +159,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneBeamEmitterLayerData? ResolveBeamEmitterLayer(
+        UnrFile.UnrFile unr,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -167,6 +172,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneBeamEmitterLayerData
             {
+                StableName = SceneStableNameUtility.BuildActorStableName("BeamEm", unr, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -192,6 +198,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneVertMeshEmitterLayerData? ResolveVertMeshEmitterLayer(
+        UnrFile.UnrFile unr,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -204,6 +211,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneVertMeshEmitterLayerData
             {
+                StableName = SceneStableNameUtility.BuildActorStableName("VertMeshEm", unr, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -301,7 +309,7 @@ public sealed class SceneParticleBuilder
             : $"{reference.PackageName}.{reference.ObjectName}";
     }
 
-    private readonly record struct SceneParticleLayerIdentity(
+    public  readonly record struct SceneParticleLayerIdentity(
         int ExportIndex,
         string Name,
         UnrFileUnknownProperty[] UnknownProperties);
