@@ -15,6 +15,7 @@ public sealed class SceneLightingBuilder
                 return new SceneLightData
                 {
                     ExportIndex = x.ExportIndex,
+                    StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
                     Name = x.ObjectName,
                     ClassName = x.ClassName,
                     WorldLocation = x.Location,
@@ -50,6 +51,7 @@ public sealed class SceneLightingBuilder
                 return new SceneSunData
                 {
                     ExportIndex = x.ExportIndex,
+                    StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
                     Name = x.ObjectName,
                     ClassName = x.ClassName,
                     WorldLocation = x.Location,
@@ -76,6 +78,7 @@ public sealed class SceneLightingBuilder
                 return new SceneSunData
                 {
                     ExportIndex = x.ExportIndex,
+                    StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
                     Name = x.ObjectName,
                     ClassName = x.ClassName,
                     WorldLocation = x.Location,
@@ -109,6 +112,7 @@ public sealed class SceneLightingBuilder
                 return new SceneMoonData
                 {
                     ExportIndex = x.ExportIndex,
+                    StableName = SceneStableNameUtility.BuildActorStableName( unr, x),
                     Name = x.ObjectName,
                     ClassName = x.ClassName,
                     WorldLocation = x.Location,
@@ -133,6 +137,7 @@ public sealed class SceneLightingBuilder
             .Select(x => new SceneSkyZoneData
             {
                 ExportIndex = x.ExportIndex,
+                StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
                 Name = x.ObjectName,
                 WorldLocation = x.Location,
                 TexUPanSpeed = x.TexUPanSpeed,

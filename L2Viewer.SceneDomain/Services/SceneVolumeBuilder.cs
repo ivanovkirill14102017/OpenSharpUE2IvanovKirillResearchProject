@@ -51,6 +51,7 @@ public sealed class SceneVolumeBuilder
             UnrWaterVolumeObject water => new SceneWaterVolumeData
             {
                 ExportIndex = water.ExportIndex,
+                StableName = SceneStableNameUtility.BuildActorStableName(mapPath, water),
                 Name = water.ObjectName,
                 ClassName = water.ClassName,
                 MainScale = water.MainScale,
@@ -117,6 +118,7 @@ public sealed class SceneVolumeBuilder
         return new ScenePhysicsVolumeData
         {
             ExportIndex = actor.ExportIndex,
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath, actor),
             Name = actor.ObjectName,
             ClassName = actor.ClassName,
             MainScale = actor.MainScale,
@@ -160,6 +162,7 @@ public sealed class SceneVolumeBuilder
         return new SceneBlockingVolumeData
         {
             ExportIndex = actor.ExportIndex,
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath, actor),
             Name = actor.ObjectName,
             ClassName = actor.ClassName,
             MainScale = actor.MainScale,
@@ -203,6 +206,7 @@ public sealed class SceneVolumeBuilder
         return new SceneConvexVolumeData
         {
             ExportIndex = actor.ExportIndex,
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath, actor),
             Name = actor.ObjectName,
             ClassName = actor.ClassName,
             MainScale = actor.MainScale,
@@ -246,6 +250,7 @@ public sealed class SceneVolumeBuilder
         return new SceneDefaultPhysicsVolumeData
         {
             ExportIndex = actor.ExportIndex,
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath,actor),
             Name = actor.ObjectName,
             ClassName = actor.ClassName,
             MainScale = actor.MainScale,
@@ -289,6 +294,7 @@ public sealed class SceneVolumeBuilder
         return new SceneMusicVolumeData
         {
             ExportIndex = actor.ExportIndex,
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath,  actor),
             Name = actor.ObjectName,
             ClassName = actor.ClassName,
             MainScale = actor.MainScale,

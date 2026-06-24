@@ -3,6 +3,7 @@ namespace L2Viewer.SceneDomain.Models;
 public sealed class SceneLightData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public required string ClassName { get; init; }
     public Vector3? WorldLocation { get; init; }
@@ -24,6 +25,7 @@ public sealed class SceneLightData
 public sealed class SceneSunData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public required string ClassName { get; init; }
     public Vector3? WorldLocation { get; init; }
@@ -43,6 +45,7 @@ public sealed class SceneSunData
 public sealed class SceneMoonData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public required string ClassName { get; init; }
     public Vector3? WorldLocation { get; init; }
@@ -75,6 +78,7 @@ public sealed class SceneZoneInfoData : SceneActorBrushData
 public sealed class SceneSkyZoneData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public Vector3? WorldLocation { get; init; }
     public float? TexUPanSpeed { get; init; }

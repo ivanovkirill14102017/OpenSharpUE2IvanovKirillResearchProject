@@ -3,6 +3,7 @@ namespace L2Viewer.SceneDomain.Models;
 public sealed class SceneParticleEmitterData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public Vector3? WorldLocation { get; init; }
     public Vector3? WorldRotationUnrealRaw { get; init; }

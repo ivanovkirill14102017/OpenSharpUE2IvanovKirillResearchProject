@@ -30,6 +30,7 @@ public sealed class SceneFogBuilder
 
                 return new SceneZoneInfoData
                 {
+                    StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
                     ExportIndex = x.ExportIndex,
                     Name = x.ObjectName,
                     ClassName = x.ClassName,

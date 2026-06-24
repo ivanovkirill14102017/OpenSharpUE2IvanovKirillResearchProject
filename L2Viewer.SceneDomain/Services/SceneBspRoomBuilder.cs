@@ -1,6 +1,4 @@
 using L2Viewer.SceneDomain.Models;
-using L2Viewer.UnrFile;
-using L2Viewer.UsxFile;
 
 namespace L2Viewer.SceneDomain.Services;
 
@@ -498,12 +496,6 @@ public sealed class SceneBspRoomBuilder
         return sharedVertexCount >= 2;
     }
 
-    private static string BuildMeshPartName(int materialRawReference, uint polyFlags, int clusterIndex)
-    {
-        var baseName = materialRawReference == 0 ? $"SurfaceGroup_{polyFlags:X8}" : $"Material_{materialRawReference}";
-        return $"{baseName}_Cluster_{clusterIndex:D2}";
-    }
-
     private SceneBspScene Convert(BspDiagnosticScene source)
     {
         var materialLookup = _materialResolver is null
@@ -543,7 +535,7 @@ public sealed class SceneBspRoomBuilder
         {
             ExportIndex = source.ExportIndex,
             Name = source.Name,
-            StableName = BuildModelStableName(source),
+            StableName = SceneStableNameUtility.BuildActorStableName(mapPath,source),
             IsWorldModel = source.IsWorldModel,
             NodeCount = source.NodeCount,
             PolygonCount = source.PolygonCount,
@@ -561,7 +553,7 @@ public sealed class SceneBspRoomBuilder
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
         IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> directTextureLookup)
     {
-        var chunkStableName = BuildChunkStableName(source);
+        var chunkStableName = SceneStableNameUtility.BuildChunkStableName(source);
         return new SceneBspChunk
         {
             ChunkIndex = source.ChunkIndex,
@@ -632,7 +624,7 @@ public sealed class SceneBspRoomBuilder
         return new SceneBspMeshSection
         {
             Name = source.Name,
-            StableName = BuildSectionStableName(chunkStableName, source),
+            StableName = SceneStableNameUtility.BuildSectionStableName(chunkStableName, source),
             SurfaceCount = source.SurfaceCount,
             MaterialRawReference = source.MaterialRawReference,
             MaterialReference = materialReference,
@@ -679,33 +671,10 @@ public sealed class SceneBspRoomBuilder
             material.RootClassName);
     }
 
-    private static string BuildModelStableName(BspDiagnosticModel source)
+    private static string BuildMeshPartName(int materialRawReference, uint polyFlags, int clusterIndex)
     {
-        return $"Model_{source.ExportIndex:D6}_{SanitizeStableName(source.Name)}";
-    }
-
-    private static string BuildChunkStableName(BspDiagnosticChunk source)
-    {
-        return $"Chunk_{SanitizeStableName(source.Name)}";
-    }
-
-    private static string BuildSectionStableName(string chunkStableName, BspDiagnosticMeshPart source)
-    {
-        return $"Section_{chunkStableName}__{SanitizeStableName(source.Name)}";
-    }
-
-    private static string SanitizeStableName(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Unnamed";
-        }
-
-        var chars = value
-            .Select(character => char.IsLetterOrDigit(character) ? character : '_')
-            .ToArray();
-        var sanitized = new string(chars).Trim('_');
-        return string.IsNullOrWhiteSpace(sanitized) ? "Unnamed" : sanitized;
+        var baseName = materialRawReference == 0 ? $"SurfaceGroup_{polyFlags:X8}" : $"Material_{materialRawReference}";
+        return $"{baseName}_Cluster_{clusterIndex:D2}";
     }
 
     private static int GetKindOrder(string kind)

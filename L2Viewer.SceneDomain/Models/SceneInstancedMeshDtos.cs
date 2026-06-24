@@ -47,6 +47,7 @@ public sealed class SceneStaticMeshSubMeshDefinition
 public sealed class SceneStaticMeshInstance
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string ActorName { get; init; }
     public required string ClassName { get; init; }
     public required string MeshReference { get; init; }

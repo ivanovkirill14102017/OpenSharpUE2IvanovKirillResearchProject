@@ -12,12 +12,13 @@ public sealed class SceneParticleBuilder
         return unr.ExportObjects
             .Select(x => x.Object)
             .OfType<UnrEmitterObject>()
-            .Select(x => BuildEmitter(x, byExportIndex))
+            .Select(x => BuildEmitter(unr,x, byExportIndex))
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     private static SceneParticleEmitterData BuildEmitter(
+        UnrFile.UnrFile unr,
         UnrEmitterObject emitter,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -51,6 +52,7 @@ public sealed class SceneParticleBuilder
 
         return new SceneParticleEmitterData
         {
+            StableName= SceneStableNameUtility.BuildActorStableName(unr,emitter),
             ExportIndex = emitter.ExportIndex,
             Name = emitter.ObjectName,
             WorldLocation = emitter.Location,

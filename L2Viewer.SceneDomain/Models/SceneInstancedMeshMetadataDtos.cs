@@ -9,6 +9,7 @@ public sealed class SceneInstancedMeshMetadataResult
 public sealed class SceneStaticMeshInstanceMetadata
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string ActorName { get; init; }
     public required string ClassName { get; init; }
     public string? MeshReference { get; init; }

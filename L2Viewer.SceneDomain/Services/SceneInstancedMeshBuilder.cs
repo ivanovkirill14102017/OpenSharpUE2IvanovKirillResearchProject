@@ -7,7 +7,6 @@ public sealed class SceneInstancedMeshBuilder
 {
     private readonly SceneStaticMeshResolver _resolver;
     private readonly BspTextureManager _textureManager;
-    private const int MaxTerrainDecoSampleResolution = 128;
 
     public SceneInstancedMeshBuilder(SceneStaticMeshResolver resolver, BspTextureManager textureManager)
     {
@@ -15,7 +14,7 @@ public sealed class SceneInstancedMeshBuilder
         _textureManager = textureManager;
     }
 
-    public SceneInstancedMeshResult Build(L2Viewer.UnrFile.UnrFile unr)
+    public SceneInstancedMeshResult Build(UnrFile.UnrFile unr)
     {
         var meshActors = unr.ExportObjects
             .Select(x => x.Object)
@@ -96,8 +95,10 @@ public sealed class SceneInstancedMeshBuilder
             }
 
             var rotationRaw = actor.Rotation ?? Vector3.Zero;
+            var stableName = SceneStableNameUtility.BuildActorStableName(unr, actor);
             instances.Add(CreateInstance(
                 actor.ExportIndex,
+                stableName,
                 actor.ObjectName,
                 actor.ClassName,
                 meshReference,
@@ -223,6 +224,7 @@ public sealed class SceneInstancedMeshBuilder
 
     private static SceneStaticMeshInstance CreateInstance(
         int exportIndex,
+        string stableName,
         string actorName,
         string className,
         string meshReference,
@@ -240,6 +242,7 @@ public sealed class SceneInstancedMeshBuilder
         return new SceneStaticMeshInstance
         {
             ExportIndex = exportIndex,
+            StableName = stableName,
             ActorName = actorName,
             ClassName = className,
             MeshReference = meshReference,

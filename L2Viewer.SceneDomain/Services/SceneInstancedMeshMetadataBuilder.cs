@@ -31,6 +31,7 @@ public sealed class SceneInstancedMeshMetadataBuilder
             instances.Add(new SceneStaticMeshInstanceMetadata
             {
                 ExportIndex = actor.ExportIndex,
+                StableName = SceneStableNameUtility.BuildActorStableName(unr, actor),
                 ActorName = actor.ObjectName,
                 ClassName = actor.ClassName,
                 MeshReference = SceneReferenceUtilities.BuildOptionalReference(unr.FilePath, actor.StaticMeshReference),

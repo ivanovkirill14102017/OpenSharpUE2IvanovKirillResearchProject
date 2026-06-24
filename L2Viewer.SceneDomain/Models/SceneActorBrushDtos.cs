@@ -3,6 +3,7 @@ namespace L2Viewer.SceneDomain.Models;
 public abstract class SceneActorBrushData
 {
     public required int ExportIndex { get; init; }
+    public required string StableName { get; init; }
     public required string Name { get; init; }
     public required string ClassName { get; init; }
     public UnrFileScale? MainScale { get; init; }
