@@ -94,18 +94,62 @@ public sealed class UnrLevelObject : UnrFileObject
 public sealed class UnrTerrainInfoObject : UnrFileObject
 {
     public Vector3? Location { get; init; }
+    public Vector3? Rotation { get; init; }
+    public Vector3? SwayRotationOrig { get; init; }
     public Vector3? TerrainScale { get; init; }
     public int? MapX { get; init; }
     public int? MapY { get; init; }
+    public float DrawScale { get; init; } = 1f;
+    public float? TickTime { get; init; }
+    public int? GeneratedSectorCounter { get; init; }
+    public int? NumIntMap { get; init; }
+    public byte[] TerrainIntMapPayload { get; init; } = [];
+    public UnrTerrainIntMapLayer[] TerrainIntMaps { get; init; } = [];
+    public bool AutoTimeGeneration { get; init; }
+    public bool DynamicActorFilterState { get; init; }
+    public bool LightChanged { get; init; }
+    public bool SunAffect { get; init; }
+    public string? Tag { get; init; }
     public UnrFileObjectReference? TerrainMapReference { get; init; }
+    public UnrFileObjectReference? LevelReference { get; init; }
+    public UnrFileObjectReference? PhysicsVolumeReference { get; init; }
+    public UnrPointRegion? Region { get; init; }
+    public UnrTextureModifyInfo? TexModifyInfo { get; init; }
     public uint[] QuadVisibilityBitmap { get; init; } = [];
     public uint[] QuadVisibilityBitmapOriginal { get; init; } = [];
     public uint[] EdgeTurnBitmap { get; init; } = [];
     public uint[] EdgeTurnBitmapOriginal { get; init; } = [];
+    public UnrFileObjectReference[] TerrainSectorReferences { get; init; } = [];
+    public UnrTerrainNativeByteBlock[] NativeByteBlocks { get; init; } = [];
+    public UnrTerrainNativeRasterCache? NativeRasterCache { get; init; }
     public UnrTerrainLayer[] Layers { get; init; } = [];
     public UnrTerrainDecoLayer[] DecoLayers { get; init; } = [];
     public UnrFileUnknownProperty[] UnknownProperties { get; init; } = [];
     public required int NativeTailSize { get; init; }
+}
+
+public sealed class UnrTerrainIntMapLayer
+{
+    public int ArrayIndex { get; init; }
+    public float? Time { get; init; }
+    public byte[] IntensityValues { get; init; } = [];
+    public byte[] RawPayload { get; init; } = [];
+}
+
+public sealed class UnrTerrainNativeByteBlock
+{
+    public int ArrayIndex { get; init; }
+    public int Count { get; init; }
+    public byte[] Values { get; init; } = [];
+}
+
+public sealed class UnrTerrainNativeRasterCache
+{
+    public byte[] HeaderPrefixBytes { get; init; } = [];
+    public int[] HeaderInt32Values { get; init; } = [];
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public byte[] Values { get; init; } = [];
 }
 
 public sealed class UnrTerrainLayer

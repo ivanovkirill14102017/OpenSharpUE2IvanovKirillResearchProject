@@ -77,4 +77,43 @@ internal static class BinaryReaderArrayPropertyExtensions
 
         return values;
     }
+
+    internal static byte[] ReadByteArrayProperty(
+        this BinaryReader reader,
+        StreamPropertyTag tag,
+        string className,
+        int exportIndex,
+        string objectName)
+    {
+        if (tag.Type != PackageReader.PropertyTypeArray || tag.DataSize < 0)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) has invalid byte array payload in '{tag.Name}'.");
+        }
+
+        var payloadStart = reader.BaseStream.Position;
+        var count = PackageReader.ReadCompactIndex(reader);
+        if (count < 0)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) has invalid negative byte array count in '{tag.Name}'.");
+        }
+
+        var prefixBytes = checked((int)(reader.BaseStream.Position - payloadStart));
+        var remainingBytes = checked(tag.DataSize - prefixBytes);
+        if (remainingBytes < 0 || remainingBytes != count)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) has invalid byte array payload in '{tag.Name}': count={count}, remaining={remainingBytes}, size={tag.DataSize}.");
+        }
+
+        var values = reader.ReadBytes(count);
+        if (values.Length != count)
+        {
+            throw new PackageReadException(
+                $"{className} export {exportIndex} ({objectName}) hit EOF while reading byte array payload in '{tag.Name}'.");
+        }
+
+        return values;
+    }
 }

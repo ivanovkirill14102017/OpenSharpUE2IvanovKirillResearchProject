@@ -22,7 +22,7 @@ public sealed class BspTerrainDecoSceneBuilder
             .Select(x => x.Object)
             .OfType<UnrTerrainInfoObject>()
             .ToList();
-        var textures = ResolveTextures(terrains);
+        var textures = TerrainShared.ResolveLayerAndHeightTextures(_textureManager, terrains);
         var meshes = _staticMeshManager.ResolveMany(
             unr.FilePath,
             terrains.SelectMany(x => x.DecoLayers)
@@ -50,15 +50,15 @@ public sealed class BspTerrainDecoSceneBuilder
             yield break;
         }
 
-        var heightResolved = GetResolvedTexture(terrain.TerrainMapReference, textures);
+        var heightResolved = TerrainShared.GetResolvedTexture(terrain.TerrainMapReference, textures);
         if (heightResolved?.Texture is null)
         {
             yield break;
         }
 
         var heightTexture = heightResolved.Texture;
-        var heightField = BuildHeightField(heightTexture);
-        var terrainScale = NormalizeTerrainScale(terrain.TerrainScale);
+        var heightField = TerrainShared.BuildHeightField(heightTexture, out _);
+        var terrainScale = TerrainShared.NormalizeTerrainScale(terrain.TerrainScale);
 
         for (var layerIndex = 0; layerIndex < terrain.DecoLayers.Length; layerIndex++)
         {
@@ -70,7 +70,7 @@ public sealed class BspTerrainDecoSceneBuilder
                 continue;
             }
 
-            var densityResolved = GetResolvedTexture(layer.DensityMapReference, textures);
+            var densityResolved = TerrainShared.GetResolvedTexture(layer.DensityMapReference, textures);
             if (densityResolved?.Texture is null)
             {
                 continue;
@@ -78,7 +78,7 @@ public sealed class BspTerrainDecoSceneBuilder
 
             var scaleResolved = layer.ScaleMapReference?.PackageName is null
                 ? null
-                : GetResolvedTexture(layer.ScaleMapReference, textures);
+                : TerrainShared.GetResolvedTexture(layer.ScaleMapReference, textures);
             var meshReference = SceneReferenceUtilities.BuildReference(mapPath, layer.StaticMeshReference);
             var staticMesh = meshes[meshReference];
             if (staticMesh is null || staticMesh.Triangles.Count == 0)
@@ -102,49 +102,6 @@ public sealed class BspTerrainDecoSceneBuilder
                 yield return instance;
             }
         }
-    }
-
-    private IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> ResolveTextures(IEnumerable<UnrTerrainInfoObject> terrains)
-    {
-        var requests = terrains
-            .SelectMany(terrain => EnumerateTextureReferences(terrain))
-            .Where(reference => !string.IsNullOrWhiteSpace(reference.PackageName))
-            .Select(reference => new SceneTextureRequest(reference.PackageName!, reference.ObjectName))
-            .ToArray();
-        return _textureManager.ResolveMany(requests);
-    }
-
-    private static IEnumerable<UnrFileObjectReference> EnumerateTextureReferences(UnrTerrainInfoObject terrain)
-    {
-        if (terrain.TerrainMapReference is not null)
-        {
-            yield return terrain.TerrainMapReference;
-        }
-
-        foreach (var layer in terrain.DecoLayers)
-        {
-            if (layer.DensityMapReference is not null)
-            {
-                yield return layer.DensityMapReference;
-            }
-
-            if (layer.ScaleMapReference is not null)
-            {
-                yield return layer.ScaleMapReference;
-            }
-        }
-    }
-
-    private static BspTextureManager.ResolvedTexture? GetResolvedTexture(
-        UnrFileObjectReference? reference,
-        IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> textures)
-    {
-        if (reference?.PackageName is null)
-        {
-            return null;
-        }
-
-        return textures.GetValueOrDefault($"{reference.PackageName}.{reference.ObjectName}");
     }
 
     private IEnumerable<BspDiagnosticPropPlacement> BuildLayerInstances(
@@ -343,95 +300,4 @@ public sealed class BspTerrainDecoSceneBuilder
         return SampleGray01(texture, x, y);
     }
 
-    private static Vector3? NormalizeTerrainScale(Vector3? terrainScale)
-    {
-        if (terrainScale is null)
-        {
-            return null;
-        }
-
-        var scale = terrainScale.Value;
-        return new Vector3(
-            MathF.Abs(scale.X),
-            MathF.Abs(scale.Z),
-            MathF.Abs(scale.Y));
-    }
-
-    private static List<float> BuildHeightField(TextureData texture)
-    {
-        var pixels = new List<(byte R, byte G, byte B, byte A)>(texture.Width * texture.Height);
-        for (var i = 0; i < texture.RgbaBytes.Length; i += 4)
-        {
-            pixels.Add((texture.RgbaBytes[i], texture.RgbaBytes[i + 1], texture.RgbaBytes[i + 2], texture.RgbaBytes[i + 3]));
-        }
-
-        var channels = new[] { "a", "r", "g", "b", "luma" };
-        var channelName = "luma";
-        var bestScore = float.MaxValue;
-        foreach (var channel in channels)
-        {
-            var (rough, lo, hi) = AnalyzeHeightChannel(pixels, texture.Width, texture.Height, channel);
-            var range = hi - lo;
-            if (range < 0.03f)
-            {
-                continue;
-            }
-
-            var score = rough - (0.04f * range);
-            if (score < bestScore)
-            {
-                bestScore = score;
-                channelName = channel;
-            }
-        }
-
-        return pixels.Select(p => ChannelValue(p, channelName)).ToList();
-    }
-
-    private static (float Rough, float Lo, float Hi) AnalyzeHeightChannel(
-        List<(byte R, byte G, byte B, byte A)> pixels,
-        int width,
-        int height,
-        string mode)
-    {
-        var lo = 1f;
-        var hi = 0f;
-        var rough = 0f;
-        var count = 0;
-        for (var y = 0; y < height; y++)
-        {
-            var row = y * width;
-            for (var x = 0; x < width; x++)
-            {
-                var value = ChannelValue(pixels[row + x], mode);
-                lo = MathF.Min(lo, value);
-                hi = MathF.Max(hi, value);
-                if (x + 1 < width)
-                {
-                    rough += MathF.Abs(ChannelValue(pixels[row + x + 1], mode) - value);
-                    count++;
-                }
-
-                if (y + 1 < height)
-                {
-                    rough += MathF.Abs(ChannelValue(pixels[row + x + width], mode) - value);
-                    count++;
-                }
-            }
-        }
-
-        return (rough / Math.Max(1, count), lo, hi);
-    }
-
-    private static float ChannelValue((byte R, byte G, byte B, byte A) pixel, string mode)
-    {
-        return mode switch
-        {
-            "r" => pixel.R / 255f,
-            "g" => pixel.G / 255f,
-            "b" => pixel.B / 255f,
-            "a" => pixel.A / 255f,
-            _ => ((0.299f * pixel.R) + (0.587f * pixel.G) + (0.114f * pixel.B)) / 255f
-        };
-    }
 }

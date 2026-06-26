@@ -325,17 +325,37 @@ public sealed class UnrStaticMeshInstanceObject : UnrActorBaseObject
     public int NativePayloadSize { get; init; }
     public byte[] UnknownPrefixBytes { get; init; } = [];
 }
+public sealed class UnrTerrainSectorCompactByteGrid
+{
+    public int ArrayIndex { get; init; }
+    public int SampleCount { get; init; }
+    public byte[] Values { get; init; } = [];
+}
+
+public sealed class UnrTerrainSectorUInt16Grid
+{
+    public int SampleCount { get; init; }
+    public ushort[] Values { get; init; } = [];
+}
+
 public sealed class UnrTerrainSectorObject : UnrActorBaseObject
 {
-    public int UnknownInt1 { get; init; }
-    public int UnknownInt2 { get; init; }
-    public int UnknownInt3 { get; init; }
-    public int UnknownInt4 { get; init; }
+    public int HeaderValue0 { get; init; }
+    public int LocalSizeTimesTwo { get; init; }
+    public int LocalOriginXTimesTwo { get; init; }
+    public int LocalOriginYTimesTwo { get; init; }
+    public byte BoundsPrefixByte { get; init; }
     public Vector3 BoundsMin { get; init; }
     public Vector3 BoundsMax { get; init; }
-    public ushort UnknownShort1 { get; init; }
-    public ushort UnknownShort2 { get; init; }
-    public int UnknownInt5 { get; init; }
+    public ushort PostBoundsValue0 { get; init; }
+    public ushort PostBoundsValue1 { get; init; }
+    public int PostBoundsValue2 { get; init; }
+    public ushort PostBoundsValue3 { get; init; }
+    public int CompactByteGridOffset { get; init; }
+    public byte[] CompactByteGridPrefixBytes { get; init; } = [];
+    public UnrTerrainSectorCompactByteGrid[] CompactByteGrids { get; init; } = [];
+    public UnrTerrainSectorUInt16Grid? TrailingUInt16Grid { get; init; }
+    public byte[] RemainingPayload { get; init; } = [];
     public int NativePayloadSize { get; init; }
 }
 public sealed class UnrZoneInfoObject : UnrActorBaseObject

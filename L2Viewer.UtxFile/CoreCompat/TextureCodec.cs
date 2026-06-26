@@ -86,19 +86,33 @@ public static class TextureCodec
         }
 
         var palette = ResolvePalette(package, parsed.Value.PaletteRef);
+        var gray16Samples = parsed.Value.Format == 10
+            ? ReadG16Samples(parsed.Value.TopMip.Data, parsed.Value.TopMip.Width, parsed.Value.TopMip.Height)
+            : null;
         var pixels = DecodeStrictTexturePixels(parsed.Value.Format, parsed.Value.TopMip, palette);
         if (pixels is null)
         {
             return null;
         }
 
-        return new TextureData(
-            PackageReader.SafeName(package.Names, exportEntry.ObjectName),
-            parsed.Value.TopMip.Width,
-            parsed.Value.TopMip.Height,
-            pixels,
-            package.Path,
-            $"strict mip parser ({parsed.Value.FormatName})");
+        var textureName = PackageReader.SafeName(package.Names, exportEntry.ObjectName);
+        var decodeNote = $"strict mip parser ({parsed.Value.FormatName})";
+        return gray16Samples is null
+            ? new RgbaTextureData(
+                textureName,
+                parsed.Value.TopMip.Width,
+                parsed.Value.TopMip.Height,
+                pixels,
+                package.Path,
+                decodeNote)
+            : new Gray16TextureData(
+                textureName,
+                parsed.Value.TopMip.Width,
+                parsed.Value.TopMip.Height,
+                pixels,
+                package.Path,
+                decodeNote,
+                gray16Samples);
     }
 
     public static TextureData? LoadTextureFromPackage(string packagePath, string textureName)
@@ -727,23 +741,12 @@ public static class TextureCodec
 
     private static byte[] DecodeG16(ReadOnlySpan<byte> data, int width, int height)
     {
-        var need = width * height * 2;
-        if (data.Length < need)
-        {
-            throw new PackageReadException("G16 payload is too short.");
-        }
-
+        var values = ReadG16Samples(data, width, height);
         var output = new byte[width * height * 4];
         for (var i = 0; i < width * height; i++)
         {
-            var src = i * 2;
             var dst = i * 4;
-            
-            // In G16, the data is 16-bit. Since we currently render the preview and use ChannelValue
-            // from 8-bit R/G/B/A channels, let's map the high byte (or full range) into RGB
-            // so that luma extraction uses the high 8-bits as the primary heightmap detail.
-            // Using the high byte ensures we keep the macroscopic terrain shape.
-            var high = data[src + 1];
+            var high = (byte)(values[i] >> 8);
 
             output[dst + 0] = high;
             output[dst + 1] = high;
@@ -752,6 +755,23 @@ public static class TextureCodec
         }
 
         return output;
+    }
+
+    private static ushort[] ReadG16Samples(ReadOnlySpan<byte> data, int width, int height)
+    {
+        var need = width * height * 2;
+        if (data.Length < need)
+        {
+            throw new PackageReadException("G16 payload is too short.");
+        }
+
+        var values = new ushort[width * height];
+        for (var i = 0; i < values.Length; i++)
+        {
+            values[i] = BinaryPrimitives.ReadUInt16LittleEndian(data[(i * 2)..]);
+        }
+
+        return values;
     }
 
     private static byte[] BuildAlphaTable(byte a0, byte a1)

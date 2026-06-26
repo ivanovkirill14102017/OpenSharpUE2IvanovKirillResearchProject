@@ -18,7 +18,8 @@ public sealed class BspTerrainSceneBuilder
 
     public BspDiagnosticTerrainPlacement[] Build(L2Viewer.UnrFile.UnrFile unr)
     {
-        var textures = ResolveTextures(
+        var textures = TerrainShared.ResolveLayerAndHeightTextures(
+            _textureManager,
             unr.ExportObjects
                 .Select(x => x.Object)
                 .OfType<UnrTerrainInfoObject>());
@@ -51,15 +52,15 @@ public sealed class BspTerrainSceneBuilder
             return null;
         }
 
-        var heightResolved = GetResolvedTexture(terrain.TerrainMapReference, textures);
+        var heightResolved = TerrainShared.GetResolvedTexture(terrain.TerrainMapReference, textures);
         if (heightResolved?.Texture is null)
         {
             return null;
         }
 
         var heightTexture = heightResolved.Texture;
-        var heightField = BuildHeightField(heightTexture, out var heightChannel);
-        var terrainScale = NormalizeTerrainScale(terrain.TerrainScale);
+        var heightField = TerrainShared.BuildHeightField(heightTexture, out var heightChannel);
+        var terrainScale = TerrainShared.NormalizeTerrainScale(terrain.TerrainScale);
         var loadedLayers = LoadLayers(terrain, textures);
         var quadVisibility = BuildQuadVisibilityMask(terrain, heightTexture);
         var edgeTurn = BuildEdgeTurnMask(terrain, heightTexture);
@@ -107,8 +108,8 @@ public sealed class BspTerrainSceneBuilder
     {
         return terrain.Layers
             .Select(layer => (
-                Texture: Resolve(layer.TextureReference, textures),
-                AlphaMap: Resolve(layer.AlphaMapReference, textures),
+                Texture: TerrainShared.ResolveTexture(layer.TextureReference, textures),
+                AlphaMap: TerrainShared.ResolveTexture(layer.AlphaMapReference, textures),
                 TextureReference: layer.TextureReference))
             .Where(x => x.Texture is not null && x.AlphaMap is not null)
             .Select(x => new LoadedTerrainLayer(
@@ -118,55 +119,6 @@ public sealed class BspTerrainSceneBuilder
                     ? x.Texture!.Name
                     : $"{x.TextureReference.PackageName}.{x.TextureReference.ObjectName}"))
             .ToList();
-    }
-
-    private static TextureData? Resolve(
-        UnrFileObjectReference? reference,
-        IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> textures)
-    {
-        if (reference?.PackageName is null)
-        {
-            return null;
-        }
-
-        return GetResolvedTexture(reference, textures)?.Texture;
-    }
-
-    private IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> ResolveTextures(IEnumerable<UnrTerrainInfoObject> terrains)
-    {
-        var requests = terrains
-            .SelectMany(terrain => terrain.Layers.SelectMany(layer => new[] { layer.TextureReference, layer.AlphaMapReference })
-                .Append(terrain.TerrainMapReference))
-            .Where(reference => !string.IsNullOrWhiteSpace(reference?.PackageName))
-            .Select(reference => new SceneTextureRequest(reference!.PackageName!, reference.ObjectName))
-            .ToArray();
-        return _textureManager.ResolveMany(requests);
-    }
-
-    private static BspTextureManager.ResolvedTexture? GetResolvedTexture(
-        UnrFileObjectReference? reference,
-        IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> textures)
-    {
-        if (reference?.PackageName is null)
-        {
-            return null;
-        }
-
-        return textures.GetValueOrDefault($"{reference.PackageName}.{reference.ObjectName}");
-    }
-
-    private static Vector3? NormalizeTerrainScale(Vector3? terrainScale)
-    {
-        if (terrainScale is null)
-        {
-            return null;
-        }
-
-        var scale = terrainScale.Value;
-        return new Vector3(
-            MathF.Abs(scale.X),
-            MathF.Abs(scale.Z),
-            MathF.Abs(scale.Y));
     }
 
     private static MeshData[] BuildChunkMeshes(
@@ -252,7 +204,7 @@ public sealed class BspTerrainSceneBuilder
             }
         }
 
-        return new TextureData(
+        return new RgbaTextureData(
             $"terrain_chunk_{startX}_{startY}",
             ChunkTextureSize,
             ChunkTextureSize,
@@ -284,7 +236,7 @@ public sealed class BspTerrainSceneBuilder
             }
         }
 
-        return new TextureData(
+        return new RgbaTextureData(
             $"terrain_chunk_base_{startX}_{startY}",
             ChunkTextureSize,
             ChunkTextureSize,
@@ -536,91 +488,6 @@ public sealed class BspTerrainSceneBuilder
             BBoxMin = mesh.BBoxMin + offset,
             BBoxMax = mesh.BBoxMax + offset
         };
-    }
-
-    private static List<float> BuildHeightField(TextureData texture, out string channelName)
-    {
-        var pixels = ToPixels(texture);
-        var channels = new[] { "a", "r", "g", "b", "luma" };
-        channelName = "luma";
-        var bestScore = float.MaxValue;
-        foreach (var channel in channels)
-        {
-            var (rough, lo, hi) = AnalyzeHeightChannel(pixels, texture.Width, texture.Height, channel);
-            var range = hi - lo;
-            if (range < 0.03f)
-            {
-                continue;
-            }
-
-            var score = rough - 0.04f * range;
-            if (score < bestScore)
-            {
-                bestScore = score;
-                channelName = channel;
-            }
-        }
-
-        var selectedChannel = channelName;
-        return pixels.Select(p => ChannelValue(p, selectedChannel)).ToList();
-    }
-
-    private static List<(byte R, byte G, byte B, byte A)> ToPixels(TextureData texture)
-    {
-        var pixels = new List<(byte R, byte G, byte B, byte A)>(texture.Width * texture.Height);
-        for (var i = 0; i < texture.RgbaBytes.Length; i += 4)
-        {
-            pixels.Add((texture.RgbaBytes[i], texture.RgbaBytes[i + 1], texture.RgbaBytes[i + 2], texture.RgbaBytes[i + 3]));
-        }
-
-        return pixels;
-    }
-
-    private static float ChannelValue((byte R, byte G, byte B, byte A) pixel, string mode)
-    {
-        return mode switch
-        {
-            "r" => pixel.R / 255f,
-            "g" => pixel.G / 255f,
-            "b" => pixel.B / 255f,
-            "a" => pixel.A / 255f,
-            _ => (0.299f * pixel.R + 0.587f * pixel.G + 0.114f * pixel.B) / 255f
-        };
-    }
-
-    private static (float Rough, float Lo, float Hi) AnalyzeHeightChannel(
-        List<(byte R, byte G, byte B, byte A)> pixels,
-        int width,
-        int height,
-        string mode)
-    {
-        var lo = 1f;
-        var hi = 0f;
-        var rough = 0f;
-        var count = 0;
-        for (var y = 0; y < height; y++)
-        {
-            var row = y * width;
-            for (var x = 0; x < width; x++)
-            {
-                var value = ChannelValue(pixels[row + x], mode);
-                lo = MathF.Min(lo, value);
-                hi = MathF.Max(hi, value);
-                if (x + 1 < width)
-                {
-                    rough += MathF.Abs(ChannelValue(pixels[row + x + 1], mode) - value);
-                    count++;
-                }
-
-                if (y + 1 < height)
-                {
-                    rough += MathF.Abs(ChannelValue(pixels[row + x + width], mode) - value);
-                    count++;
-                }
-            }
-        }
-
-        return (rough / Math.Max(1, count), lo, hi);
     }
 
     private sealed record LoadedTerrainLayer(TextureData Texture, TextureData AlphaMap, string ReferenceText);

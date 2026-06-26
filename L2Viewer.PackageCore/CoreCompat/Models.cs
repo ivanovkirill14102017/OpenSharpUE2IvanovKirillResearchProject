@@ -39,13 +39,32 @@ public sealed record PackageExportInfo(
     int SerialSize,
     int? SerialOffset);
 
-public sealed record TextureData(
+public abstract record TextureData(
     string Name,
     int Width,
     int Height,
     byte[] RgbaBytes,
     string SourcePackage,
     string DecodeNote);
+
+public sealed record RgbaTextureData(
+    string Name,
+    int Width,
+    int Height,
+    byte[] RgbaBytes,
+    string SourcePackage,
+    string DecodeNote)
+    : TextureData(Name, Width, Height, RgbaBytes, SourcePackage, DecodeNote);
+
+public sealed record Gray16TextureData(
+    string Name,
+    int Width,
+    int Height,
+    byte[] RgbaBytes,
+    string SourcePackage,
+    string DecodeNote,
+    ushort[] Gray16Samples)
+    : TextureData(Name, Width, Height, RgbaBytes, SourcePackage, DecodeNote);
 
 public sealed record MaterialTextureInfo(
     string Reference,

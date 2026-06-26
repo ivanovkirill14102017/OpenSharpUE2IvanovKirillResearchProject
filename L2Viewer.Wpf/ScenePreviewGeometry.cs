@@ -208,7 +208,7 @@ internal sealed class ScenePreviewGeometry
             rgba[dst + 3] = 255;
         }
 
-        return new TextureData(
+        return new RgbaTextureData(
             terrain.ObjectName,
             terrain.HeightWidth,
             terrain.HeightHeight,

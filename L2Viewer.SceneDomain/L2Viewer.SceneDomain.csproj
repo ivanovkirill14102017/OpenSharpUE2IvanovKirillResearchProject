@@ -14,6 +14,9 @@
     <ProjectReference Include="..\L2Viewer.UnrFile\L2Viewer.UnrFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UtxFile\L2Viewer.UtxFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UsxFile\L2Viewer.UsxFile.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\L2Viewer.DbFile\L2Viewer.DbFile.csproj" />
   </ItemGroup>
 
