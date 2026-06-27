@@ -12,6 +12,22 @@ internal sealed class DatBinaryReader
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
     }
 
+    public int Remaining => _buffer.Length - _offset;
+
+    public int Position
+    {
+        get => _offset;
+        set
+        {
+            if (value < 0 || value > _buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
+            _offset = value;
+        }
+    }
+
     public int ReadInt32()
     {
         EnsureAvailable(sizeof(int));
@@ -36,6 +52,52 @@ internal sealed class DatBinaryReader
         return value;
     }
 
+    public byte ReadByte()
+    {
+        EnsureAvailable(sizeof(byte));
+        return _buffer[_offset++];
+    }
+
+    public byte[] ReadBytes(int count)
+    {
+        if (count < 0)
+        {
+            throw new InvalidDataException($"Negative byte count '{count}' is not valid.");
+        }
+
+        EnsureAvailable(count);
+        var bytes = new byte[count];
+        Buffer.BlockCopy(_buffer, _offset, bytes, 0, count);
+        _offset += count;
+        return bytes;
+    }
+
+    public int ReadPackedInt32()
+    {
+        EnsureAvailable(1);
+        var first = _buffer[_offset++];
+        var value = first & 0x3F;
+        var shift = 6;
+
+        if ((first & 0x40) != 0)
+        {
+            while (true)
+            {
+                EnsureAvailable(1);
+                var next = _buffer[_offset++];
+                value |= (next & 0x7F) << shift;
+                if ((next & 0x80) == 0)
+                {
+                    break;
+                }
+
+                shift += 7;
+            }
+        }
+
+        return value;
+    }
+
     public string ReadUnicodeString32()
     {
         var length = ReadInt32();
@@ -55,24 +117,7 @@ internal sealed class DatBinaryReader
         EnsureAvailable(1);
         var first = _buffer[_offset++];
         var isUnicode = (first & 0x80) != 0;
-        var length = first & 0x3F;
-        var shift = 6;
-
-        if ((first & 0x40) != 0)
-        {
-            while (true)
-            {
-                EnsureAvailable(1);
-                var next = _buffer[_offset++];
-                length |= (next & 0x7F) << shift;
-                if ((next & 0x80) == 0)
-                {
-                    break;
-                }
-
-                shift += 7;
-            }
-        }
+        var length = ReadPackedValue(first);
 
         if (length < 0)
         {
@@ -105,6 +150,31 @@ internal sealed class DatBinaryReader
         {
             throw new InvalidDataException($"Decoded DAT buffer still has {_buffer.Length - _offset} unread bytes.");
         }
+    }
+
+    public bool IsAtSafePackageRemainder()
+    {
+        var remaining = _buffer.Length - _offset;
+        if (remaining != 13)
+        {
+            return false;
+        }
+
+        if (_buffer[_offset] != 0x0C)
+        {
+            return false;
+        }
+
+        const string marker = "SafePackage";
+        for (var i = 0; i < marker.Length; i++)
+        {
+            if (_buffer[_offset + 1 + i] != marker[i])
+            {
+                return false;
+            }
+        }
+
+        return _buffer[_offset + 12] == 0;
     }
 
     private void EnsureAvailable(int length)
@@ -151,5 +221,29 @@ internal sealed class DatBinaryReader
         return value.EndsWith('\0')
             ? value[..^1]
             : value;
+    }
+
+    private int ReadPackedValue(byte first)
+    {
+        var value = first & 0x3F;
+        var shift = 6;
+
+        if ((first & 0x40) != 0)
+        {
+            while (true)
+            {
+                EnsureAvailable(1);
+                var next = _buffer[_offset++];
+                value |= (next & 0x7F) << shift;
+                if ((next & 0x80) == 0)
+                {
+                    break;
+                }
+
+                shift += 7;
+            }
+        }
+
+        return value;
     }
 }

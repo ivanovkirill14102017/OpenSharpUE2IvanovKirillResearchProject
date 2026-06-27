@@ -77,4 +77,39 @@ public static class SceneReferenceUtilities
 
         return BuildResourceLocation(clientRoot, mapPath, packageName, objectName, className);
     }
+
+    public static SceneResourceReference BuildFromDbResourceReference(string reference, string className)
+    {
+        var parsed = ParseFromDbResourceReference(reference);
+        return new SceneResourceReference
+        {
+            Reference = reference,
+            ClassName = className,
+            PackageName = parsed.PackageName,
+            ObjectName = parsed.ObjectName
+        };
+    }
+
+    public static (string PackageName, string ObjectName) ParseFromDbResourceReference(string reference)
+    {
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            throw new PackageReadException("Resource reference is empty.");
+        }
+
+        var parts = reference.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2)
+        {
+            throw new PackageReadException($"Resource reference '{reference}' is not in 'Package.Object' form.");
+        }
+
+        var packageName = parts[0].Trim();
+        var objectName = parts[1].Trim();
+        if (string.IsNullOrWhiteSpace(packageName) || string.IsNullOrWhiteSpace(objectName))
+        {
+            throw new PackageReadException($"Resource reference '{reference}' is not in 'Package.Object' form.");
+        }
+
+        return (packageName, objectName);
+    }
 }

@@ -10,3 +10,11 @@ public sealed class SceneResourceLocation
     public required string ClientRelativePath { get; init; }
     public required string Uri { get; init; }
 }
+
+public sealed class SceneResourceReference
+{
+    public required string Reference { get; init; }
+    public required string ClassName { get; init; }
+    public required string PackageName { get; init; }
+    public required string ObjectName { get; init; }
+}

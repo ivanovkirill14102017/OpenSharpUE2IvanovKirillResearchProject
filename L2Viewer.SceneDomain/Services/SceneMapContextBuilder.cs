@@ -10,10 +10,28 @@ public sealed class SceneMapContextBuilder
         return Build(unr);
     }
 
+    public SceneMapContextData Load(string path, string dbRootPath, string quadrant)
+    {
+        var unr = L2Viewer.UnrFile.UnrFileReader.Read(path);
+        return Build(unr, dbRootPath, quadrant);
+    }
+
     public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr)
+    {
+        return BuildCore(unr, dbRootPath: null, quadrant: null);
+    }
+
+    public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr, string dbRootPath, string quadrant)
+    {
+        return BuildCore(unr, dbRootPath, quadrant);
+    }
+
+    private SceneMapContextData BuildCore(L2Viewer.UnrFile.UnrFile unr, string? dbRootPath, string? quadrant)
     {
         var lightingBuilder = new SceneLightingBuilder();
         var fogBuilder = new SceneFogBuilder();
+        var npcBuilder = new SceneNpcMapBuilder();
+        var monsterBuilder = new SceneMonsterMapBuilder();
         var zones = fogBuilder.BuildFogZones(unr);
         var suns = lightingBuilder.BuildSuns(unr);
         var moons = lightingBuilder.BuildMoons(unr);
@@ -64,6 +82,11 @@ public sealed class SceneMapContextBuilder
         var primarySun = suns.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var primaryMoon = moons.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var (worldBoundsMin, worldBoundsMax) = ComputeWorldBoundsFromPoints(worldModel);
+        var dataset = string.IsNullOrWhiteSpace(dbRootPath) || string.IsNullOrWhiteSpace(quadrant)
+            ? null
+            : SceneSpawnVisualDataset.Load(dbRootPath, quadrant);
+        var npcs = dataset is null ? [] : npcBuilder.Build(dataset);
+        var monsters = dataset is null ? [] : monsterBuilder.Build(dataset);
 
         return new SceneMapContextData
         {
@@ -92,7 +115,9 @@ public sealed class SceneMapContextBuilder
             HasSunRotation = primarySun?.WorldRotationEulerDegrees.HasValue == true,
             PrimarySunEulerDegrees = primarySun?.WorldRotationEulerDegrees ?? default,
             HasMoonRotation = primaryMoon?.WorldRotationEulerDegrees.HasValue == true,
-            PrimaryMoonEulerDegrees = primaryMoon?.WorldRotationEulerDegrees ?? default
+            PrimaryMoonEulerDegrees = primaryMoon?.WorldRotationEulerDegrees ?? default,
+            Npcs = npcs,
+            Monsters = monsters
         };
     }
 
