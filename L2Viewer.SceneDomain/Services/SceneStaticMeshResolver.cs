@@ -1,5 +1,6 @@
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.UsxFile;
+using System.Collections.Concurrent;
 
 namespace L2Viewer.SceneDomain.Services;
 
@@ -22,16 +23,21 @@ public sealed class SceneStaticMeshResolver
 
     public IReadOnlyDictionary<string, SceneStaticMeshDefinition> ResolveMany(string mapPath, IEnumerable<UnrFileObjectReference> staticMeshReferences)
     {
-        var result = new Dictionary<string, SceneStaticMeshDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var staticMeshReference in staticMeshReferences
-                     .GroupBy(x => SceneReferenceUtilities.BuildReference(mapPath, x), StringComparer.OrdinalIgnoreCase)
-                     .Select(x => x.First()))
+        var uniqueReferences = staticMeshReferences
+            .GroupBy(x => SceneReferenceUtilities.BuildReference(mapPath, x), StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToArray();
+        var result = new ConcurrentDictionary<string, SceneStaticMeshDefinition>(StringComparer.OrdinalIgnoreCase);
+
+        Parallel.ForEach(uniqueReferences, staticMeshReference =>
         {
             var key = SceneReferenceUtilities.BuildReference(mapPath, staticMeshReference);
             result[key] = ResolveSingle(mapPath, staticMeshReference);
-        }
+        });
 
-        return result;
+        return result
+            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyDictionary<string, SceneResourceLocation> ResolveResourceLocations(string mapPath, IEnumerable<UnrFileObjectReference> references)

@@ -194,11 +194,11 @@ public static class Lineage2FileProfiles
 
     private static byte[] DecompressVer413Payload(byte[] compressedPayload, int expectedLength)
     {
-#if NET9_0_OR_GREATER
-        using var input = new MemoryStream(compressedPayload);
-        using var zlib = new ZLibStream(input, CompressionMode.Decompress);
+        var deflatePayload = ExtractZlibDeflatePayload(compressedPayload);
+        using var input = new MemoryStream(deflatePayload);
+        using var deflate = new DeflateStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream(Math.Max(expectedLength, 0));
-        zlib.CopyTo(output);
+        deflate.CopyTo(output);
         var result = output.ToArray();
         if (result.Length != expectedLength)
         {
@@ -206,9 +206,36 @@ public static class Lineage2FileProfiles
         }
 
         return result;
-#else
-        throw new PlatformNotSupportedException("Lineage2Ver413 decompression is currently available only on net9.0 or later.");
-#endif
+    }
+
+    private static byte[] ExtractZlibDeflatePayload(byte[] compressedPayload)
+    {
+        if (compressedPayload.Length < 6)
+        {
+            throw new InvalidDataException("Lineage2Ver413 compressed payload is too small to contain a zlib header and checksum.");
+        }
+
+        var cmf = compressedPayload[0];
+        var flg = compressedPayload[1];
+        if ((cmf & 0x0F) != 8)
+        {
+            throw new InvalidDataException($"Unsupported zlib compression method in Lineage2Ver413 payload: {(cmf & 0x0F)}.");
+        }
+
+        if ((((cmf << 8) + flg) % 31) != 0)
+        {
+            throw new InvalidDataException("Lineage2Ver413 payload has an invalid zlib header checksum.");
+        }
+
+        if ((flg & 0x20) != 0)
+        {
+            throw new InvalidDataException("Lineage2Ver413 payload uses a preset zlib dictionary, which is not supported.");
+        }
+
+        var deflateLength = compressedPayload.Length - 2 - 4;
+        var result = new byte[deflateLength];
+        Buffer.BlockCopy(compressedPayload, 2, result, 0, deflateLength);
+        return result;
     }
 
     private static void DecryptRsaBlock(ReadOnlySpan<byte> encryptedBlock, Span<byte> destination)

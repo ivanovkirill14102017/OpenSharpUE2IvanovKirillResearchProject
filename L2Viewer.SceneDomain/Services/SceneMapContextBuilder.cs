@@ -81,10 +81,9 @@ public sealed class SceneMapContextBuilder
         var primarySun = suns.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var primaryMoon = moons.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var (worldBoundsMin, worldBoundsMax) = ComputeWorldBoundsFromPoints(worldModel);
-        var dataset = string.IsNullOrWhiteSpace(dbRootPath) || string.IsNullOrWhiteSpace(clientRootPath) || string.IsNullOrWhiteSpace(quadrant)
-            ? null
-            : SceneSpawnVisualDataset.Load(dbRootPath, clientRootPath, quadrant);
-        var creatures = dataset is null ? [] : creatureBuilder.Build(dataset);
+        var creatures = string.IsNullOrWhiteSpace(dbRootPath) || string.IsNullOrWhiteSpace(clientRootPath) || string.IsNullOrWhiteSpace(quadrant)
+            ? []
+            : creatureBuilder.Build(dbRootPath, clientRootPath, quadrant, unr);
 
         return new SceneMapContextData
         {

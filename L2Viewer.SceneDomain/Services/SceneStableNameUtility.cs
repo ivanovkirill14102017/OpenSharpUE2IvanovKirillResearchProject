@@ -1,4 +1,5 @@
 using L2Viewer.SceneDomain.Models;
+using L2Viewer.UnrFile;
 
 namespace L2Viewer.SceneDomain.Services;
 
@@ -44,7 +45,11 @@ public static class SceneStableNameUtility
 
     public static string BuildSectionStableName(string chunkStableName, BspDiagnosticMeshPart source)
     {
-        return $"Section_{chunkStableName}_{SanitizeStableName(source.Name)}_{string.Join("-", source.PolyFlagNames)}";
+        var partName = SanitizeStableName(source.Name);
+        var flagLabel = BuildPolyFlagLabel(source.KnownPolyFlags, source.UnknownPolyFlagsMask);
+        return string.IsNullOrEmpty(flagLabel)
+            ? $"Section_{partName}"
+            : $"Section_{partName}_{flagLabel}";
     }
 
     private static string BuildActorStableName(
@@ -56,7 +61,10 @@ public static class SceneStableNameUtility
     {
         var mapKey = SanitizeStableName(Path.GetFileNameWithoutExtension(mapPath));
         var sourceLabel = ResolveSourceLabel(actorName, className);
-        return (prefix != null ? prefix + "_" : "") + $"{mapKey}_{exportIndex:D6}_{sourceLabel}";
+        var baseName = (prefix != null ? prefix + "_" : "") + $"{mapKey}_{exportIndex:D6}";
+        return string.IsNullOrWhiteSpace(sourceLabel)
+            ? baseName
+            : $"{baseName}_{sourceLabel}";
     }
 
 
@@ -76,7 +84,41 @@ public static class SceneStableNameUtility
 
     public static string ResolveSourceLabel(string? actorName, string? className)
     {
-        return string.Join("_", [SanitizeStableName(className), SanitizeStableName(actorName)]);
+        var parts = new[]
+            {
+                className,
+                actorName
+            }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(SanitizeStableName)
+            .ToArray();
+
+        return parts.Length == 0
+            ? string.Empty
+            : string.Join("_", parts);
+    }
+
+    private static string BuildPolyFlagLabel(UnrPolyFlags knownFlags, uint unknownPolyFlagsMask)
+    {
+        var names = Enum.GetValues(typeof(UnrPolyFlags))
+            .Cast<UnrPolyFlags>()
+            .Where(x => x != UnrPolyFlags.None && knownFlags.HasFlag(x))
+            .Select(x => x.ToString())
+            .ToList();
+
+        if (unknownPolyFlagsMask != 0)
+        {
+            for (var bit = 0; bit < 32; bit++)
+            {
+                var mask = 1u << bit;
+                if ((unknownPolyFlagsMask & mask) != 0)
+                {
+                    names.Add($"0x{mask:X8}");
+                }
+            }
+        }
+
+        return string.Join("-", names.Select(SanitizeStableName));
     }
 
 }
