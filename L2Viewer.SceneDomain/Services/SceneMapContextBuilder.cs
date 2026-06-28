@@ -10,28 +10,27 @@ public sealed class SceneMapContextBuilder
         return Build(unr);
     }
 
-    public SceneMapContextData Load(string path, string dbRootPath, string quadrant)
+    public SceneMapContextData Load(string path, string dbRootPath, string clientRootPath, string quadrant)
     {
         var unr = L2Viewer.UnrFile.UnrFileReader.Read(path);
-        return Build(unr, dbRootPath, quadrant);
+        return Build(unr, dbRootPath, clientRootPath, quadrant);
     }
 
     public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr)
     {
-        return BuildCore(unr, dbRootPath: null, quadrant: null);
+        return BuildCore(unr, dbRootPath: null, clientRootPath: null, quadrant: null);
     }
 
-    public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr, string dbRootPath, string quadrant)
+    public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr, string dbRootPath, string clientRootPath, string quadrant)
     {
-        return BuildCore(unr, dbRootPath, quadrant);
+        return BuildCore(unr, dbRootPath, clientRootPath, quadrant);
     }
 
-    private SceneMapContextData BuildCore(L2Viewer.UnrFile.UnrFile unr, string? dbRootPath, string? quadrant)
+    private SceneMapContextData BuildCore(L2Viewer.UnrFile.UnrFile unr, string? dbRootPath, string? clientRootPath, string? quadrant)
     {
         var lightingBuilder = new SceneLightingBuilder();
         var fogBuilder = new SceneFogBuilder();
-        var npcBuilder = new SceneNpcMapBuilder();
-        var monsterBuilder = new SceneMonsterMapBuilder();
+        var creatureBuilder = new SceneCreatureMapBuilder();
         var zones = fogBuilder.BuildFogZones(unr);
         var suns = lightingBuilder.BuildSuns(unr);
         var moons = lightingBuilder.BuildMoons(unr);
@@ -82,11 +81,10 @@ public sealed class SceneMapContextBuilder
         var primarySun = suns.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var primaryMoon = moons.FirstOrDefault(x => x.WorldRotationEulerDegrees.HasValue);
         var (worldBoundsMin, worldBoundsMax) = ComputeWorldBoundsFromPoints(worldModel);
-        var dataset = string.IsNullOrWhiteSpace(dbRootPath) || string.IsNullOrWhiteSpace(quadrant)
+        var dataset = string.IsNullOrWhiteSpace(dbRootPath) || string.IsNullOrWhiteSpace(clientRootPath) || string.IsNullOrWhiteSpace(quadrant)
             ? null
-            : SceneSpawnVisualDataset.Load(dbRootPath, quadrant);
-        var npcs = dataset is null ? [] : npcBuilder.Build(dataset);
-        var monsters = dataset is null ? [] : monsterBuilder.Build(dataset);
+            : SceneSpawnVisualDataset.Load(dbRootPath, clientRootPath, quadrant);
+        var creatures = dataset is null ? [] : creatureBuilder.Build(dataset);
 
         return new SceneMapContextData
         {
@@ -116,8 +114,7 @@ public sealed class SceneMapContextBuilder
             PrimarySunEulerDegrees = primarySun?.WorldRotationEulerDegrees ?? default,
             HasMoonRotation = primaryMoon?.WorldRotationEulerDegrees.HasValue == true,
             PrimaryMoonEulerDegrees = primaryMoon?.WorldRotationEulerDegrees ?? default,
-            Npcs = npcs,
-            Monsters = monsters
+            Creatures = creatures
         };
     }
 
