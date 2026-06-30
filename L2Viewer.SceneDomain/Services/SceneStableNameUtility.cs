@@ -18,6 +18,7 @@ public static class SceneStableNameUtility
     {
         return BuildActorStableName(prefix: null, unr.FilePath, actor.ObjectName, actor.ClassName, actor.ExportIndex);
     }
+
     public static string BuildActorStableName(
         string prefix,
         UnrFile.UnrFile unr,
@@ -52,6 +53,22 @@ public static class SceneStableNameUtility
             : $"Section_{partName}_{flagLabel}";
     }
 
+    public static string BuildCreatureStableName(
+        string mapKey,
+        string? spawnLocationKey,
+        int spawnId,
+        int templateId,
+        string? displayName)
+    {
+        var normalizedMapKey = SanitizeStableName(Path.GetFileNameWithoutExtension(mapKey));
+        var normalizedLocation = SanitizeStableName(spawnLocationKey);
+        var baseName = $"Creature_{normalizedMapKey}_{normalizedLocation}_{spawnId:D6}_{templateId:D6}";
+        var label = SanitizeStableName(displayName);
+        return string.Equals(label, "Unnamed", StringComparison.Ordinal)
+            ? baseName
+            : $"{baseName}_{label}";
+    }
+
     private static string BuildActorStableName(
         string? prefix,
         string mapPath,
@@ -66,7 +83,6 @@ public static class SceneStableNameUtility
             ? baseName
             : $"{baseName}_{sourceLabel}";
     }
-
 
     private static string SanitizeStableName(string? value)
     {
@@ -120,5 +136,4 @@ public static class SceneStableNameUtility
 
         return string.Join("-", names.Select(SanitizeStableName));
     }
-
 }

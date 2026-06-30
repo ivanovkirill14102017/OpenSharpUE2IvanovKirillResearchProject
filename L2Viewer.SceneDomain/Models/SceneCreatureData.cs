@@ -5,6 +5,7 @@ namespace L2Viewer.SceneDomain.Models;
 [ForExternalUse]
 public sealed class SceneCreatureSpawnData
 {
+    public required string StableName { get; init; }
     public required string VisualKey { get; init; }
     public required int SpawnId { get; init; }
     public required int TemplateId { get; init; }

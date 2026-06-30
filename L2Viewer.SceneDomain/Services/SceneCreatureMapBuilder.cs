@@ -22,10 +22,14 @@ public sealed class SceneCreatureMapBuilder
             throw new ArgumentNullException(nameof(unr));
         }
 
-        var worldModel = BspWorldModelPolicy.ResolvePreferredWorldModel(unr)
-            ?? throw new InvalidOperationException($"World model not found in: {Path.GetFileName(unr.FilePath)}");
-        var (worldBoundsMin, worldBoundsMax) = ComputeWorldBoundsFromPoints(worldModel);
-        return Build(SceneSpawnVisualDataset.Load(dbRootPath, clientRootPath, quadrant, worldBoundsMin, worldBoundsMax));
+        var primaryTerrain = ResolvePrimaryTerrain(clientRootPath, unr);
+        var dataset = SceneSpawnVisualDataset.Load(
+            dbRootPath,
+            clientRootPath,
+            quadrant,
+            primaryTerrain?.WorldMinCorner,
+            primaryTerrain?.WorldMaxCorner);
+        return Build(dataset);
     }
 
     internal SceneCreatureSpawnData[] Build(SceneSpawnVisualDataset dataset)
@@ -53,14 +57,21 @@ public sealed class SceneCreatureMapBuilder
                 "Texture",
                 spawn.npc_templateid,
                 spawn.id);
+            var displayName = string.IsNullOrWhiteSpace(npcName.Name) ? npc.name : npcName.Name;
 
             results.Add(new SceneCreatureSpawnData
             {
+                StableName = SceneStableNameUtility.BuildCreatureStableName(
+                    dataset.Quadrant,
+                    spawn.location,
+                    spawn.id,
+                    spawn.npc_templateid,
+                    displayName),
                 VisualKey = BuildVisualKey(actorClass.Reference, mesh.Reference, textures.Select(x => x.Reference)),
                 SpawnId = spawn.id,
                 TemplateId = spawn.npc_templateid,
                 SpawnLocationKey = spawn.location,
-                DisplayName = string.IsNullOrWhiteSpace(npcName.Name) ? npc.name : npcName.Name,
+                DisplayName = displayName,
                 DbClassName = npc.@class,
                 ActorClassResource = actorClass,
                 MeshResource = mesh,
@@ -86,21 +97,9 @@ public sealed class SceneCreatureMapBuilder
         return string.Join("|", new[] { actorClass, mesh }.Concat(textures.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)));
     }
 
-    private static (Vector3 Min, Vector3 Max) ComputeWorldBoundsFromPoints(UnrModelObject model)
+    private static TerrainImportData? ResolvePrimaryTerrain(string clientRootPath, L2Viewer.UnrFile.UnrFile unr)
     {
-        if (model.Points.Length == 0)
-        {
-            return (Vector3.Zero, Vector3.Zero);
-        }
-
-        var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-        var max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
-        for (var i = 0; i < model.Points.Length; i++)
-        {
-            min = Vector3.Min(min, model.Points[i]);
-            max = Vector3.Max(max, model.Points[i]);
-        }
-
-        return (min, max);
+        var terrainBuilder = new TerrainImportBuilder(new BspTextureManager(clientRootPath));
+        return terrainBuilder.Build(unr).FirstOrDefault();
     }
 }
