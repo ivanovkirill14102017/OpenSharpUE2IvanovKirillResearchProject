@@ -312,6 +312,7 @@ public sealed class UnrMeshEmitterObject : UnrFileObject, IUnrFadeInParticleLaye
     public string? NameValue { get; init; }
     public bool SpinParticles { get; init; }
     public UnrRangeVector? SpinsPerSecondRange { get; init; }
+    public UnrRangeVector? StartSpinRange { get; init; }
     public UnrRangeVector? StartSizeRange { get; init; }
     public UnrFloatRange? LifetimeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }

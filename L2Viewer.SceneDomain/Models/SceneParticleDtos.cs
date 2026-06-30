@@ -80,6 +80,7 @@ public sealed class SceneMeshEmitterLayerData : SceneFadeInParticleLayerData
     public bool RenderTwoSided { get; init; }
     public bool SpinParticles { get; init; }
     public UnrRangeVector? SpinsPerSecondRange { get; init; }
+    public UnrRangeVector? StartSpinRange { get; init; }
     public UnrRangeVector? StartSizeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
 }

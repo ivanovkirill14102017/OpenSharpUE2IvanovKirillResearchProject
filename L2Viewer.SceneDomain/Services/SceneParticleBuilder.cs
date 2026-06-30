@@ -148,6 +148,7 @@ public sealed class SceneParticleBuilder
                 MaxParticles = timed.MaxParticles,
                 SpinParticles = mesh.SpinParticles,
                 SpinsPerSecondRange = mesh.SpinsPerSecondRange,
+                StartSpinRange = mesh.StartSpinRange,
                 StartSizeRange = mesh.StartSizeRange,
                 LifetimeRange = timed.LifetimeRange,
                 StartVelocityRange = mesh.StartVelocityRange,

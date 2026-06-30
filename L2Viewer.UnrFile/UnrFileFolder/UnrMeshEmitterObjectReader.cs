@@ -24,6 +24,7 @@ internal static class UnrMeshEmitterObjectReader
         string? nameValue = null;
         var spinParticles = false;
         UnrRangeVector? spinsPerSecondRange = null;
+        UnrRangeVector? startSpinRange = null;
         UnrRangeVector? startSizeRange = null;
         UnrFloatRange? lifetimeRange = null;
         UnrRangeVector? startVelocityRange = null;
@@ -134,6 +135,9 @@ internal static class UnrMeshEmitterObjectReader
                 case UnrMeshEmitterPropertyKind.SpinsPerSecondRange:
                     spinsPerSecondRange = ReadRangeVectorStruct(package, reader, tag, className, exportIndex, objectName);
                     return;
+                case UnrMeshEmitterPropertyKind.StartSpinRange:
+                    startSpinRange = ReadRangeVectorStruct(package, reader, tag, className, exportIndex, objectName);
+                    return;
                 case UnrMeshEmitterPropertyKind.StartSizeRange:
                     startSizeRange = ReadRangeVectorStruct(package, reader, tag, className, exportIndex, objectName);
                     return;
@@ -193,6 +197,7 @@ internal static class UnrMeshEmitterObjectReader
             NameValue = nameValue,
             SpinParticles = spinParticles,
             SpinsPerSecondRange = spinsPerSecondRange,
+            StartSpinRange = startSpinRange,
             StartSizeRange = startSizeRange,
             LifetimeRange = lifetimeRange,
             StartVelocityRange = startVelocityRange,
@@ -325,6 +330,7 @@ internal static class UnrMeshEmitterObjectReader
         Name,
         SpinParticles,
         SpinsPerSecondRange,
+        StartSpinRange,
         StartSizeRange,
         LifetimeRange,
         StartVelocityRange,
