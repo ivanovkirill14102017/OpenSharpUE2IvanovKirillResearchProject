@@ -18,6 +18,9 @@ public sealed class SceneSkeletalAsset
     public required IReadOnlyList<SceneSkeletalMaterialBinding> MaterialBindings { get; init; }
     public string? PrimaryTextureReference { get; init; }
     public required IReadOnlyList<MaterialTextureInfo> UsedTextures { get; init; }
+    public required IReadOnlyList<SceneSkeletalAnimationRoutingProfile> RoutingProfiles { get; init; }
+    public required IReadOnlyList<string> ConsumerWarnings { get; init; }
+    public required bool RequiresExplicitConsumerRouting { get; init; }
 }
 
 public sealed class SceneSkeletalMaterialBinding
@@ -112,11 +115,18 @@ public sealed class SceneSkeletalAnimationBone
 public sealed class SceneSkeletalAnimationSequence
 {
     public required string Name { get; init; }
+    public required string NormalizedName { get; init; }
+    public required string Category { get; init; }
     public required int TotalBones { get; init; }
     public required float TrackTime { get; init; }
     public required float AnimRate { get; init; }
     public required int FirstRawFrame { get; init; }
     public required int NumRawFrames { get; init; }
+    public required bool SuggestedLoop { get; init; }
+    public required bool IsOneShot { get; init; }
+    public required bool RequiresExplicitRouting { get; init; }
+    public required IReadOnlyList<string> SuggestedNextSequenceNames { get; init; }
+    public required IReadOnlyList<SceneSkeletalAnimationNotify> Notifies { get; init; }
 }
 
 public sealed class SceneSkeletalAnimationKey
@@ -124,4 +134,39 @@ public sealed class SceneSkeletalAnimationKey
     public required Vector3 Position { get; init; }
     public required Quaternion Orientation { get; init; }
     public required float Time { get; init; }
+}
+
+public sealed class SceneSkeletalAnimationNotify
+{
+    public required float Time { get; init; }
+    public string? FunctionName { get; init; }
+    public string? NotifyClassName { get; init; }
+    public string? NotifyObjectName { get; init; }
+    public string? ExtraText { get; init; }
+    public required bool IsCombatImpact { get; init; }
+    public required bool IsProjectileRelease { get; init; }
+    public required bool IsSoundCue { get; init; }
+}
+
+public sealed class SceneSkeletalAnimationRoutingProfile
+{
+    public required int NpcId { get; init; }
+    public string? NpcServerName { get; init; }
+    public string? NpcDisplayName { get; init; }
+    public required string NpcClass { get; init; }
+    public required string MeshReference { get; init; }
+    public float? NpcSpeed { get; init; }
+    public required IReadOnlyList<string> SuggestedDefaultSequenceNames { get; init; }
+    public required IReadOnlyList<string> SuggestedCombatIdleSequenceNames { get; init; }
+    public required IReadOnlyList<string> SuggestedSkillIdleSequenceNames { get; init; }
+    public required IReadOnlyList<SceneSkeletalSkillAnimationTrigger> SkillTriggers { get; init; }
+}
+
+public sealed class SceneSkeletalSkillAnimationTrigger
+{
+    public required int SkillId { get; init; }
+    public required string SkillName { get; init; }
+    public required string SequenceName { get; init; }
+    public required string SequenceCategory { get; init; }
+    public required bool IsSocialLikeSequence { get; init; }
 }

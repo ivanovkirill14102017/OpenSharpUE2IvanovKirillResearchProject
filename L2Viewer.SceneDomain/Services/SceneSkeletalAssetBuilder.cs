@@ -64,6 +64,8 @@ public sealed class SceneSkeletalAssetBuilder
         var materialSource = SceneSkeletalMeshCodec.DecodeSkeletalMesh(mesh, packagePath);
         var actorX = UkxActorXCompatBuilder.Build(mesh, animation);
         var (boundsMin, boundsMax) = ComputeBounds(actorX.Model.Mesh.Points);
+        var animationSet = SceneSkeletalAnimationSemantics.BuildAnimationSet(ukx, animation, actorX.AnimationSet);
+        var routingMetadata = SceneSkeletalAnimationRoutingResolver.BuildRoutingMetadata(packagePath, mesh.ObjectName, animationSet.Sequences);
 
         return new SceneSkeletalAsset
         {
@@ -75,10 +77,13 @@ public sealed class SceneSkeletalAssetBuilder
             Details = $"Mesh={mesh.ObjectName}\r\nAnimation={animation.ObjectName}",
             Skeleton = MapSkeleton(actorX.Model.Skeleton),
             Mesh = MapMesh(mesh.ObjectName, actorX.Model.Mesh, boundsMin, boundsMax),
-            AnimationSet = MapAnimationSet(actorX.AnimationSet),
+            AnimationSet = animationSet,
             MaterialBindings = BuildMaterialBindings(mesh, packagePath),
             PrimaryTextureReference = materialSource?.TextureRef,
-            UsedTextures = materialSource?.UsedTextures ?? []
+            UsedTextures = materialSource?.UsedTextures ?? [],
+            RoutingProfiles = routingMetadata.Profiles,
+            ConsumerWarnings = routingMetadata.Warnings,
+            RequiresExplicitConsumerRouting = routingMetadata.RequiresExplicitConsumerRouting
         };
     }
 
@@ -144,37 +149,6 @@ public sealed class SceneSkeletalAssetBuilder
                 .ToArray(),
             BoundsMin = boundsMin,
             BoundsMax = boundsMax
-        };
-    }
-
-    private static SceneSkeletalAnimationSet MapAnimationSet(BlenderCompatAnimationSet animationSet)
-    {
-        return new SceneSkeletalAnimationSet
-        {
-            Name = animationSet.Name,
-            Bones = animationSet.Bones
-                .Select((bone, index) => new SceneSkeletalAnimationBone
-                {
-                    Index = index,
-                    Name = bone.Name,
-                    ParentIndex = bone.ParentIndex
-                })
-                .ToArray(),
-            Sequences = animationSet.Sequences.Select(x => new SceneSkeletalAnimationSequence
-            {
-                Name = x.Name,
-                TotalBones = x.TotalBones,
-                TrackTime = x.TrackTime,
-                AnimRate = x.AnimRate,
-                FirstRawFrame = x.FirstRawFrame,
-                NumRawFrames = x.NumRawFrames
-            }).ToArray(),
-            Keys = animationSet.Keys.Select(x => new SceneSkeletalAnimationKey
-            {
-                Position = x.Position,
-                Orientation = x.Orientation,
-                Time = x.Time
-            }).ToArray()
         };
     }
 
