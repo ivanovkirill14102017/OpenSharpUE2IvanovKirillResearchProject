@@ -5,6 +5,7 @@ using L2Viewer.PackageCore;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.SceneDomain.Services;
 using System.Windows.Controls;
+using L2Viewer.SceneDomain.Services.MaterialServices;
 
 namespace L2Viewer.Wpf;
 

@@ -1,4 +1,6 @@
 using L2Viewer.PackageCore;
+using L2Viewer.SceneDomain.Services.CharacterServices;
+using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.SceneDomain.Services.Utility;
 using L2Viewer.UFile;
 using UtxTextureCodec = L2Viewer.UtxFile.TextureCodec;
