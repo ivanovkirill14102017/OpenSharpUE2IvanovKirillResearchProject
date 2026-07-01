@@ -1,6 +1,6 @@
 namespace L2Viewer.SceneDomain.Models;
 
-public sealed class SceneActorPreviewData
+public sealed class SceneActorPreviewDiagnosticData
 {
     public required int ExportIndex { get; init; }
     public required string Name { get; init; }

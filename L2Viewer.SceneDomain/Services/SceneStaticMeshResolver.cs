@@ -1,4 +1,6 @@
 using L2Viewer.SceneDomain.Models;
+using L2Viewer.SceneDomain.Services.MaterialServices;
+using L2Viewer.SceneDomain.Services.Utility;
 using L2Viewer.UsxFile;
 using System.Collections.Concurrent;
 

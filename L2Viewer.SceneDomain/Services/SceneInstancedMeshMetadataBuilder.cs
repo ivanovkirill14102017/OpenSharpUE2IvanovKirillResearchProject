@@ -1,10 +1,11 @@
 using L2Viewer.SceneDomain.Models;
+using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services;
 
 public sealed class SceneInstancedMeshMetadataBuilder
 {
-    public SceneInstancedMeshMetadataResult Build(L2Viewer.UnrFile.UnrFile unr)
+    public SceneInstancedMeshMetadataResult Build(UnrFile.UnrFile unr)
     {
         var instances = new List<SceneStaticMeshInstanceMetadata>();
         var terrainDecorations = new List<SceneTerrainDecorationMetadata>();

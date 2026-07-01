@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using L2Viewer.SceneDomain.Services;
+using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.UsxFile;
 
 namespace L2Viewer.SceneDomain.Models;

@@ -2,6 +2,9 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.SceneDomain.Services;
+using L2Viewer.SceneDomain.Services.BSPServices;
+using L2Viewer.SceneDomain.Services.MaterialServices;
+using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.BspDiagnostics.Wpf;
 

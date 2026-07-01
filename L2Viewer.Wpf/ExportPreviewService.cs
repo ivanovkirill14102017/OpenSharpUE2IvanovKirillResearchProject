@@ -1,5 +1,5 @@
 using L2Viewer.PackageCore;
-using L2Viewer.SceneDomain.Services;
+using L2Viewer.SceneDomain.Services.Utility;
 using L2Viewer.UFile;
 using UtxTextureCodec = L2Viewer.UtxFile.TextureCodec;
 
@@ -340,7 +340,7 @@ internal sealed class ExportPreviewService
     private async Task PreviewActorOrMetadataAsync(PackageExportInfo exportInfo, CancellationToken token)
     {
         var actorClientRoot = (_owner.FindName("ClientRootTextBox") as System.Windows.Controls.TextBox)?.Text.Trim() ?? string.Empty;
-        var actorPreview = await Task.Run<(SceneActorPreviewData Preview, PreparedBoundsScene Scene)?>(() =>
+        var actorPreview = await Task.Run<(SceneActorPreviewDiagnosticData Preview, PreparedBoundsScene Scene)?>(() =>
         {
             if (string.IsNullOrWhiteSpace(actorClientRoot))
             {
@@ -350,7 +350,7 @@ internal sealed class ExportPreviewService
             var unr = UnrFileReader.Read(_owner.CurrentDocument!.Package.Path);
             var textureManager = new BspTextureManager(actorClientRoot);
             var resolver = new SceneStaticMeshResolver(actorClientRoot, textureManager);
-            var preview = new SceneActorPreviewBuilder(resolver).Build(_owner.CurrentDocument!.Package.Path, unr, exportInfo.Index);
+            var preview = new SceneActorPreviewDiagnosticBuilder(resolver).Build(_owner.CurrentDocument!.Package.Path, unr, exportInfo.Index);
             if (preview is null)
             {
                 return null;

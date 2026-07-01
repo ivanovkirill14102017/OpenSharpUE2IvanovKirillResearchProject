@@ -1,5 +1,6 @@
 using L2Viewer.SceneDomain.Models;
-using L2Viewer.SceneDomain.Services;
+using L2Viewer.SceneDomain.Services.BSPServices;
+using L2Viewer.SceneDomain.Services.MaterialServices;
 
 namespace L2Viewer.Wpf;
 
