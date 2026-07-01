@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace L2Viewer.DatFile;
 
 public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
@@ -7,6 +9,17 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
     public override CharGrpDatDocument Read(string path)
     {
         var decoded = DatDecodedFileReader.ReadDecodedBytes(path);
+        try
+        {
+            var interludeReader = new DatBinaryReader(decoded);
+            var interludeDocument = ReadInterludeDocument(path, interludeReader);
+            interludeReader.EnsureFullyConsumedOrSafePackage();
+            return interludeDocument;
+        }
+        catch (Exception ex) when (ex is EndOfStreamException or InvalidDataException or OverflowException)
+        {
+        }
+
         var errors = new List<string>();
 
         foreach (var layout in BuildLayouts())
@@ -38,6 +51,88 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
 
         throw new InvalidDataException(
             $"Unable to parse chargrp.dat with supported layouts. {string.Join(" | ", errors)}");
+    }
+
+    private static CharGrpDatDocument ReadInterludeDocument(string path, DatBinaryReader reader)
+    {
+        const int count = 15;
+        var entries = new List<CharGrpDatEntry>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var faceIcon = reader.ReadUnicodeString32();
+            var hairMeshCount = checked((int)reader.ReadUInt32());
+            var hairTextureCount = checked((int)reader.ReadUInt32());
+            var faceMeshCount = checked((int)reader.ReadUInt32());
+            var faceTextureCount = checked((int)reader.ReadUInt32());
+            var hairMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, hairMeshCount);
+            _ = DatReaderPrimitives.ReadUnicodeArray(reader, hairTextureCount);
+            var faceMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, faceMeshCount);
+            var faceTextures = DatReaderPrimitives.ReadUnicodeArray(reader, faceTextureCount);
+            var bodyMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, 4);
+            var bodyTextures = DatReaderPrimitives.ReadUnicodeArray(reader, 4);
+            var attackEffect = reader.ReadUnicodeString32();
+            var walkAnimationFrame = reader.ReadUInt32();
+            var attackSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var defenseSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var damageSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var voiceHandSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var voiceOneHandSwordSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var voiceTwoHandSwordSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var voiceDualSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var voicePoleSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var reserve1Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var reserve2Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var reserve3Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+
+            entries.Add(new CharGrpDatEntry(
+                hairMeshes,
+                new DatMeshTextureSet(faceMeshes, faceTextures),
+                faceIcon.Length == 0 ? Array.Empty<byte>() : Encoding.Unicode.GetBytes(faceIcon),
+                BuildEquipment(bodyMeshes, bodyTextures, 2),
+                BuildEquipment(bodyMeshes, bodyTextures, 0),
+                BuildEquipment(bodyMeshes, bodyTextures, 1),
+                BuildEquipment(bodyMeshes, bodyTextures, 3),
+                Array.Empty<byte>(),
+                attackEffect,
+                walkAnimationFrame,
+                attackSounds,
+                defenseSounds,
+                damageSounds,
+                voiceHandSounds,
+                voiceOneHandSwordSounds,
+                voiceTwoHandSwordSounds,
+                voiceDualSounds,
+                voicePoleSounds,
+                reserve1Sounds,
+                reserve2Sounds,
+                reserve3Sounds,
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                0u));
+        }
+
+        return new CharGrpDatDocument(path, entries);
+    }
+
+    private static CharGrpEquipmentDatEntry BuildEquipment(
+        IReadOnlyList<string> bodyMeshes,
+        IReadOnlyList<string> bodyTextures,
+        int index)
+    {
+        var meshes = index < bodyMeshes.Count && !string.IsNullOrWhiteSpace(bodyMeshes[index])
+            ? new[] { bodyMeshes[index] }
+            : Array.Empty<string>();
+        var textures = index < bodyTextures.Count && !string.IsNullOrWhiteSpace(bodyTextures[index])
+            ? new[] { bodyTextures[index] }
+            : Array.Empty<string>();
+
+        return new CharGrpEquipmentDatEntry(
+            meshes,
+            textures,
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<byte>(),
+            Array.Empty<uint>());
     }
 
     private static CharGrpDatDocument ReadDocument(string path, DatBinaryReader reader, CharLayout layout)
