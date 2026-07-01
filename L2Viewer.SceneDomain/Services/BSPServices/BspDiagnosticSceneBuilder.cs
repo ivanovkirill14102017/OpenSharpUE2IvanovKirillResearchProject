@@ -1,5 +1,5 @@
 using L2Viewer.SceneDomain.Models;
-using L2Viewer.SceneDomain.Services.MaterialServices;
+using L2Viewer.SceneDTO;
 
 namespace L2Viewer.SceneDomain.Services.BSPServices;
 

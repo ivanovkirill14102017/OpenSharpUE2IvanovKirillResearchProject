@@ -1,4 +1,6 @@
 using System.Numerics;
+using L2Viewer.PackageCore;
+using L2Viewer.SceneDTO;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.SceneDomain.Services.Utility;
@@ -84,7 +86,7 @@ public sealed class SceneMoverBuilder
                                 (mover.Rotation?.Z ?? 0) * (MathF.PI / 32768f)) *
                             Matrix4x4.CreateTranslation(mover.Location ?? Vector3.Zero);
             var prePivot = mover.PrePivot;
-            var brushPolys = BspUvResolver.ResolveBrushPolys(unr, modelObj);
+            var brushPolys = L2Viewer.SceneDTO.BspUvResolver.ResolveBrushPolys(unr, modelObj);
             var built = BuildMover(unr.FilePath, mover.ObjectName, mover.ExportIndex, modelObj, brushPolys, transform, prePivot, materialLookup, directTextureLookup);
             if (built is null)
             {
@@ -122,238 +124,76 @@ public sealed class SceneMoverBuilder
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
         IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> directTextureLookup)
     {
-        var triangles = new List<Triangle>();
-        var materials = new Dictionary<(int RawReference, uint PolyFlags), int>();
-        var subMeshes = new List<SceneMoverSubMesh>();
-
-        var modelMin = new Vector3(float.MaxValue);
-        var modelMax = new Vector3(float.MinValue);
-
-        for (var nodeIndex = 0; nodeIndex < model.Nodes.Length; nodeIndex++)
-        {
-            var node = model.Nodes[nodeIndex];
-            if (node.SurfaceIndex < 0 || node.SurfaceIndex >= model.Surfaces.Length)
-            {
-                continue;
-            }
-
-            var vertexCount = node.VertexCount;
-            if (vertexCount < 3)
-            {
-                continue;
-            }
-
-            var polygon = new List<Vector3>(vertexCount);
-            var validPolygon = true;
-            for (var vertexOffset = 0; vertexOffset < vertexCount; vertexOffset++)
-            {
-                var vertexIndex = node.VertexPoolIndex + vertexOffset;
-                if (vertexIndex < 0 || vertexIndex >= model.Vertices.Length)
-                {
-                    validPolygon = false;
-                    break;
-                }
-
-                var pointIndex = model.Vertices[vertexIndex].PointIndex;
-                if (pointIndex < 0 || pointIndex >= model.Points.Length)
-                {
-                    validPolygon = false;
-                    break;
-                }
-
-                polygon.Add(model.Points[pointIndex]);
-            }
-
-            if (!validPolygon)
-            {
-                continue;
-            }
-
-            polygon = RemoveSequentialDuplicates(polygon);
-            if (polygon.Count < 3)
-            {
-                continue;
-            }
-
-            var surface = model.Surfaces[node.SurfaceIndex];
-            const uint PF_Invisible = 0x00000001;
-            if ((surface.PolyFlags & PF_Invisible) != 0)
-            {
-                continue;
-            }
-
-            var matKey = (surface.MaterialRawReference, surface.PolyFlags);
-            if (!materials.TryGetValue(matKey, out var materialId))
-            {
-                materialId = materials.Count;
-                materials.Add(matKey, materialId);
-                
-                var materialReference = string.IsNullOrWhiteSpace(surface.MaterialReference?.ObjectName)
-                    ? $"<null>.MaterialRaw_{surface.MaterialRawReference}"
-                    : SceneReferenceUtilities.BuildReference(mapPath, surface.MaterialReference.PackageName, surface.MaterialReference.ObjectName);
-                var material = string.IsNullOrWhiteSpace(surface.MaterialReference?.ObjectName) || _materialResolver is null
-                    ? null
-                    : materialLookup.GetValueOrDefault(materialReference);
-                var materialResource = material is null ? null : BuildMaterialResource(material);
-                var directTexture = _textureManager is not null &&
-                                    material is null &&
-                                    !string.IsNullOrWhiteSpace(surface.MaterialReference?.PackageName) &&
-                                    !string.IsNullOrWhiteSpace(surface.MaterialReference?.ObjectName)
-                    ? directTextureLookup.GetValueOrDefault($"{surface.MaterialReference.PackageName}.{surface.MaterialReference.ObjectName}")
-                    : null;
-                var orderedTextureSlots = material is null
-                    ? []
-                    : MaterialTextureSlotOrdering.OrderTextureSlots(material.TextureSlots);
-                var primaryTextureReference = orderedTextureSlots.FirstOrDefault()?.Reference ?? (directTexture is null ? null : SceneReferenceUtilities.BuildReference(mapPath, surface.MaterialReference!.PackageName, surface.MaterialReference!.ObjectName));
-                var primaryTextureResource = orderedTextureSlots.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.PackagePath)) is { } slot
-                    ? SceneReferenceUtilities.BuildResourceLocation(_clientRoot!, slot.PackagePath!, slot.PackageName, slot.ObjectName, slot.ClassName)
-                    : (directTexture?.Resource);
-
-                subMeshes.Add(new SceneMoverSubMesh
-                {
-                    MaterialId = materialId,
-                    TriangleCount = 0, // We will update this later
-                    MaterialReference = materialReference,
-                    MaterialResource = materialResource,
-                    Material = material,
-                    PrimaryTextureReference = primaryTextureReference,
-                    PrimaryTextureResource = primaryTextureResource,
-                    PolyFlags = surface.PolyFlags,
-                    ColorArgb = CreateColor(surface.MaterialRawReference, materialId)
-                });
-            }
-
-            var normal = SafeNormalize(new Vector3(node.Plane.X, node.Plane.Y, node.Plane.Z));
-            if (normal.LengthSquared() < 0.000001f)
-            {
-                normal = ComputePolygonNormal(polygon);
-            }
-
-            var worldNormal = Vector3.Normalize(Vector3.TransformNormal(normal, transform));
-
-            var first = polygon[0];
-            for (var i = 1; i < polygon.Count - 1; i++)
-            {
-                var a = first;
-                var b = polygon[i];
-                var c = polygon[i + 1];
-
-                if (IsDegenerateTriangle(a, b, c))
-                {
-                    continue;
-                }
-
-                var uvA = BspUvResolver.ComputeRawUv(a, surface, model, brushPolys);
-                var uvB = BspUvResolver.ComputeRawUv(b, surface, model, brushPolys);
-                var uvC = BspUvResolver.ComputeRawUv(c, surface, model, brushPolys);
-
-                var worldA = Vector3.Transform(a - prePivot, transform);
-                var worldB = Vector3.Transform(b - prePivot, transform);
-                var worldC = Vector3.Transform(c - prePivot, transform);
-
-                triangles.Add(new Triangle(
-                    new TriangleVertex(worldA, uvA, worldNormal),
-                    new TriangleVertex(worldB, uvB, worldNormal),
-                    new TriangleVertex(worldC, uvC, worldNormal),
-                    materialId));
-
-                modelMin = Vector3.Min(modelMin, worldA);
-                modelMin = Vector3.Min(modelMin, worldB);
-                modelMin = Vector3.Min(modelMin, worldC);
-                modelMax = Vector3.Max(modelMax, worldA);
-                modelMax = Vector3.Max(modelMax, worldB);
-                modelMax = Vector3.Max(modelMax, worldC);
-            }
-        }
-
-        if (triangles.Count == 0)
+        var buildResult = MoverMeshBuilder.BuildMoverMesh(moverName, model, brushPolys, transform, prePivot);
+        if (buildResult is null)
         {
             return null;
         }
 
-        var finalSubMeshes = new List<SceneMoverSubMesh>(subMeshes.Count);
-        foreach (var subMesh in subMeshes)
+        var subMeshes = new List<SceneMoverSubMesh>(buildResult.MaterialSlots.Count);
+        foreach (var slot in buildResult.MaterialSlots)
         {
-            var count = triangles.Count(x => x.MaterialId == subMesh.MaterialId);
-            if (count > 0)
+            if (slot.TriangleCount <= 0)
             {
-                finalSubMeshes.Add(new SceneMoverSubMesh
-                {
-                    MaterialId = subMesh.MaterialId,
-                    TriangleCount = count,
-                    MaterialReference = subMesh.MaterialReference,
-                    MaterialResource = subMesh.MaterialResource,
-                    Material = subMesh.Material,
-                    PrimaryTextureReference = subMesh.PrimaryTextureReference,
-                    PrimaryTextureResource = subMesh.PrimaryTextureResource,
-                    PolyFlags = subMesh.PolyFlags,
-                    ColorArgb = subMesh.ColorArgb
-                });
+                continue;
             }
+
+            var materialReference = string.IsNullOrWhiteSpace(slot.ObjectName)
+                ? $"<null>.MaterialRaw_{slot.MaterialRawReference}"
+                : SceneReferenceUtilities.BuildReference(mapPath, slot.PackageName, slot.ObjectName);
+            var material = string.IsNullOrWhiteSpace(slot.ObjectName) || _materialResolver is null
+                ? null
+                : materialLookup.GetValueOrDefault(materialReference);
+            var materialResource = material is null ? null : BuildMaterialResource(material);
+            var directTexture = _textureManager is not null &&
+                                material is null &&
+                                !string.IsNullOrWhiteSpace(slot.PackageName) &&
+                                !string.IsNullOrWhiteSpace(slot.ObjectName)
+                ? directTextureLookup.GetValueOrDefault($"{slot.PackageName}.{slot.ObjectName}")
+                : null;
+            var orderedTextureSlots = material is null
+                ? []
+                : MaterialTextureSlotOrdering.OrderTextureSlots(material.TextureSlots);
+            var primaryTextureReference = orderedTextureSlots.FirstOrDefault()?.Reference ?? (directTexture is null ? null : SceneReferenceUtilities.BuildReference(mapPath, slot.PackageName!, slot.ObjectName!));
+            var primaryTextureResource = orderedTextureSlots.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.PackagePath)) is { } textureSlot
+                ? SceneReferenceUtilities.BuildResourceLocation(_clientRoot!, textureSlot.PackagePath!, textureSlot.PackageName, textureSlot.ObjectName, textureSlot.ClassName)
+                : directTexture?.Resource;
+
+            subMeshes.Add(new SceneMoverSubMesh
+            {
+                MaterialId = slot.MaterialId,
+                TriangleCount = slot.TriangleCount,
+                MaterialReference = materialReference,
+                MaterialResource = materialResource,
+                Material = material,
+                PrimaryTextureReference = primaryTextureReference,
+                PrimaryTextureResource = primaryTextureResource,
+                PolyFlags = slot.PolyFlags,
+                ColorArgb = CreateColor(slot.MaterialRawReference, slot.MaterialId)
+            });
         }
 
         return new SceneMover
         {
             ExportIndex = exportIndex,
             Name = moverName,
-            RenderGeometry = new SceneTriangleMeshData
-            {
-                Name = moverName,
-                Triangles = triangles.ToArray(),
-                BoundsMin = modelMin,
-                BoundsMax = modelMax,
-                SourceNote = "Mover BSP"
-            },
-            SubMeshes = finalSubMeshes.ToArray(),
-            WorldBoundsMin = modelMin,
-            WorldBoundsMax = modelMax
+            RenderGeometry = ConvertGeometry(buildResult.Mesh),
+            SubMeshes = subMeshes.ToArray(),
+            WorldBoundsMin = buildResult.Mesh.BBoxMin,
+            WorldBoundsMax = buildResult.Mesh.BBoxMax
         };
     }
 
-    private static List<Vector3> RemoveSequentialDuplicates(List<Vector3> points)
+    private static SceneTriangleMeshData ConvertGeometry(MeshData mesh)
     {
-        if (points.Count == 0) return points;
-        var result = new List<Vector3>(points.Count) { points[0] };
-        for (var i = 1; i < points.Count; i++)
+        return new SceneTriangleMeshData
         {
-            if (Vector3.DistanceSquared(points[i], result[^1]) > 0.0001f)
-            {
-                result.Add(points[i]);
-            }
-        }
-        if (result.Count > 1 && Vector3.DistanceSquared(result[0], result[^1]) <= 0.0001f)
-        {
-            result.RemoveAt(result.Count - 1);
-        }
-        return result;
-    }
-
-    private static Vector3 SafeNormalize(Vector3 v)
-    {
-        var lenSq = v.LengthSquared();
-        if (lenSq < 0.000001f)
-        {
-            return Vector3.Zero;
-        }
-        return v / MathF.Sqrt(lenSq);
-    }
-
-    private static Vector3 ComputePolygonNormal(List<Vector3> polygon)
-    {
-        var normal = Vector3.Zero;
-        for (var i = 0; i < polygon.Count; i++)
-        {
-            var j = (i + 1) % polygon.Count;
-            normal += Vector3.Cross(polygon[i], polygon[j]);
-        }
-        return SafeNormalize(normal);
-    }
-
-    private static bool IsDegenerateTriangle(Vector3 a, Vector3 b, Vector3 c)
-    {
-        var ab = b - a;
-        var ac = c - a;
-        return Vector3.Cross(ab, ac).LengthSquared() < 0.0001f;
+            Name = mesh.Name,
+            Triangles = mesh.Triangles,
+            BoundsMin = mesh.BBoxMin,
+            BoundsMax = mesh.BBoxMax,
+            SourceNote = mesh.SourceNote
+        };
     }
 
     private static uint CreateColor(int materialRawReference, int colorSeed)

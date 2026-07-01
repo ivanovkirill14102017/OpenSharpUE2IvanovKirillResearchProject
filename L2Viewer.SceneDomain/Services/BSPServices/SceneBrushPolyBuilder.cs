@@ -1,4 +1,6 @@
 using System.Numerics;
+using L2Viewer.PackageCore;
+using L2Viewer.SceneDTO;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.SceneDomain.Services.Utility;
@@ -157,12 +159,14 @@ public sealed class SceneBrushPolyBuilder
         IReadOnlyDictionary<string, ResolvedMaterialGraph?> materialLookup,
         IReadOnlyDictionary<string, BspTextureManager.ResolvedTexture> directTextureLookup)
     {
-        var triangles = new List<Triangle>();
-        var materials = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var subMeshes = new List<SceneBrushPolySubMesh>();
+        var buildResult = BrushMeshBuilder.BuildBrushPolyMesh(polys, transform, prePivot, name);
+        if (buildResult is null)
+        {
+            return null;
+        }
 
-        var boundsMin = new Vector3(float.MaxValue);
-        var boundsMax = new Vector3(float.MinValue);
+        var materialSlots = buildResult.MaterialSlots.ToDictionary(x => x.MaterialReferenceKey, x => x, StringComparer.OrdinalIgnoreCase);
+        var subMeshes = new List<SceneBrushPolySubMesh>();
 
         foreach (var poly in polys.Polys)
         {
@@ -173,11 +177,14 @@ public sealed class SceneBrushPolyBuilder
 
             var matRefStr = poly.TextureReference is null ? "null" : $"{poly.TextureReference.PackageName}.{poly.TextureReference.ObjectName}";
 
-            if (!materials.TryGetValue(matRefStr, out var materialId))
+            var slotInfo = materialSlots[matRefStr];
+            if (slotInfo.TriangleCount <= 0)
             {
-                materialId = materials.Count;
-                materials.Add(matRefStr, materialId);
-                
+                continue;
+            }
+
+            if (subMeshes.All(x => x.MaterialId != slotInfo.MaterialId))
+            {
                 var materialReference = poly.TextureReference is null ? "null" : SceneReferenceUtilities.BuildReference(mapPath, poly.TextureReference.PackageName, poly.TextureReference.ObjectName);
                 var material = poly.TextureReference is null || _materialResolver is null
                     ? null
@@ -198,66 +205,13 @@ public sealed class SceneBrushPolyBuilder
 
                 subMeshes.Add(new SceneBrushPolySubMesh
                 {
-                    MaterialId = materialId,
-                    TriangleCount = 0,
+                    MaterialId = slotInfo.MaterialId,
+                    TriangleCount = slotInfo.TriangleCount,
                     MaterialReference = materialReference,
                     MaterialResource = materialResource,
                     Material = material,
                     PrimaryTextureReference = primaryTextureReference,
                     PrimaryTextureResource = primaryTextureResource
-                });
-            }
-
-            for (var v = 2; v < poly.NumVertices; v++)
-            {
-                var p0 = poly.Vertices[0];
-                var p1 = poly.Vertices[v - 1];
-                var p2 = poly.Vertices[v];
-
-                var t0 = new Vector2(Vector3.Dot(p0 - poly.Base, poly.TextureU), Vector3.Dot(p0 - poly.Base, poly.TextureV));
-                var t1 = new Vector2(Vector3.Dot(p1 - poly.Base, poly.TextureU), Vector3.Dot(p1 - poly.Base, poly.TextureV));
-                var t2 = new Vector2(Vector3.Dot(p2 - poly.Base, poly.TextureU), Vector3.Dot(p2 - poly.Base, poly.TextureV));
-
-                var tp0 = Vector3.Transform(p0 - prePivot, transform);
-                var tp1 = Vector3.Transform(p1 - prePivot, transform);
-                var tp2 = Vector3.Transform(p2 - prePivot, transform);
-                var tNorm = Vector3.Normalize(Vector3.TransformNormal(poly.Normal, transform));
-
-                triangles.Add(new Triangle(
-                    new TriangleVertex(tp0, t0, tNorm),
-                    new TriangleVertex(tp1, t1, tNorm),
-                    new TriangleVertex(tp2, t2, tNorm),
-                    materialId));
-
-                boundsMin = Vector3.Min(boundsMin, tp0);
-                boundsMin = Vector3.Min(boundsMin, tp1);
-                boundsMin = Vector3.Min(boundsMin, tp2);
-                boundsMax = Vector3.Max(boundsMax, tp0);
-                boundsMax = Vector3.Max(boundsMax, tp1);
-                boundsMax = Vector3.Max(boundsMax, tp2);
-            }
-        }
-
-        if (triangles.Count == 0)
-        {
-            return null;
-        }
-        
-        var finalSubMeshes = new List<SceneBrushPolySubMesh>(subMeshes.Count);
-        foreach (var subMesh in subMeshes)
-        {
-            var count = triangles.Count(x => x.MaterialId == subMesh.MaterialId);
-            if (count > 0)
-            {
-                finalSubMeshes.Add(new SceneBrushPolySubMesh
-                {
-                    MaterialId = subMesh.MaterialId,
-                    TriangleCount = count,
-                    MaterialReference = subMesh.MaterialReference,
-                    MaterialResource = subMesh.MaterialResource,
-                    Material = subMesh.Material,
-                    PrimaryTextureReference = subMesh.PrimaryTextureReference,
-                    PrimaryTextureResource = subMesh.PrimaryTextureResource
                 });
             }
         }
@@ -266,17 +220,22 @@ public sealed class SceneBrushPolyBuilder
         {
             ExportIndex = exportIndex,
             Name = name,
-            RenderGeometry = new SceneTriangleMeshData
-            {
-                Name = name,
-                Triangles = triangles.ToArray(),
-                BoundsMin = boundsMin,
-                BoundsMax = boundsMax,
-                SourceNote = "Brush Polys"
-            },
-            SubMeshes = finalSubMeshes.ToArray(),
-            WorldBoundsMin = boundsMin,
-            WorldBoundsMax = boundsMax
+            RenderGeometry = ConvertGeometry(buildResult.Mesh),
+            SubMeshes = subMeshes.ToArray(),
+            WorldBoundsMin = buildResult.Mesh.BBoxMin,
+            WorldBoundsMax = buildResult.Mesh.BBoxMax
+        };
+    }
+
+    private static SceneTriangleMeshData ConvertGeometry(MeshData mesh)
+    {
+        return new SceneTriangleMeshData
+        {
+            Name = mesh.Name,
+            Triangles = mesh.Triangles,
+            BoundsMin = mesh.BBoxMin,
+            BoundsMax = mesh.BBoxMax,
+            SourceNote = mesh.SourceNote
         };
     }
 

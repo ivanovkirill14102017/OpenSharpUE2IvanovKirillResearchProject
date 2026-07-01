@@ -2,7 +2,7 @@ using System.Numerics;
 using L2Viewer.PackageCore;
 using L2Viewer.UkxFile;
 
-namespace L2Viewer.SceneDomain.Services.CharacterServices;
+namespace L2Viewer.SceneDTO;
 
 public static class SceneSkeletalMeshCodec
 {

@@ -1,9 +1,9 @@
 using System.Numerics;
 using L2Viewer.UnrFile;
 
-namespace L2Viewer.SceneDomain.Services.MaterialServices;
+namespace L2Viewer.SceneDTO;
 
-internal static class BspUvResolver
+public static class BspUvResolver
 {
     public static Vector2 ComputeRawUv(Vector3 point, UnrModelSurface surface, UnrModelObject model, UnrPolysObject? brushPolys)
     {

@@ -1,4 +1,5 @@
 using System.Numerics;
+using L2Viewer.SceneDTO;
 using L2Viewer.SceneDomain.Models;
 using L2Viewer.UkxFile;
 
