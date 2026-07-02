@@ -19,6 +19,16 @@ public sealed class SceneSkeletalMeshResolver
         return _assetBuilder.BuildNamed(packagePath, meshName);
     }
 
+    public SceneSkeletalAsset ResolveAsset(SceneResourceLocation resourceLocation)
+    {
+        if (resourceLocation is null)
+        {
+            throw new ArgumentNullException(nameof(resourceLocation));
+        }
+
+        return _assetBuilder.BuildNamed(resourceLocation.PackagePath, resourceLocation.ObjectName);
+    }
+
     public SceneSkeletalPreviewData ResolveExport(string packagePath, int exportIndex)
     {
         var key = $"{Path.GetFullPath(packagePath)}#{exportIndex}";
@@ -43,6 +53,16 @@ public sealed class SceneSkeletalMeshResolver
     {
         var asset = _assetBuilder.BuildNamed(packagePath, meshName);
         return ResolveExport(packagePath, asset.MeshExportIndex);
+    }
+
+    public SceneSkeletalPreviewData Resolve(SceneResourceLocation resourceLocation)
+    {
+        if (resourceLocation is null)
+        {
+            throw new ArgumentNullException(nameof(resourceLocation));
+        }
+
+        return ResolveNamed(resourceLocation.PackagePath, resourceLocation.ObjectName);
     }
 
     private static SceneSkeletalPreviewData BuildPreview(SceneSkeletalAsset asset)

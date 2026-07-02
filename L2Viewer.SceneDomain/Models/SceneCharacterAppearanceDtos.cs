@@ -69,6 +69,7 @@ public sealed class SceneCharacterAppearanceData
     public required SceneCharacterVisualFamily VisualFamily { get; init; }
     public required int CharGrpIndex { get; init; }
     public required SceneResourceReference SkeletonMeshResource { get; init; }
+    public required SceneResourceLocation SkeletonMeshLocation { get; init; }
     public required string SkeletonName { get; init; }
     public required int SkeletonBoneCount { get; init; }
     public required IReadOnlyList<SceneCharacterResolvedPartData> Parts { get; init; }

@@ -33,6 +33,7 @@ public sealed class SceneCharacterAppearanceBuilder
             ?? parts.FirstOrDefault(x => x.MeshResources.Length > 0)
             ?? throw new InvalidOperationException($"Visual family '{visualFamily}' has no skeletal mesh resources.");
         var skeletonMesh = skeletonPart.MeshResources[0];
+        var skeletonLocation = ResolveSkeletonLocation(clientRoot, packageIndex, skeletonMesh);
         var skeleton = ResolveSkeleton(clientRoot, packageIndex, skeletonMesh);
 
         return new SceneCharacterAppearanceData
@@ -42,6 +43,7 @@ public sealed class SceneCharacterAppearanceBuilder
             VisualFamily = visualFamily,
             CharGrpIndex = familyBinding.CharGrpIndex,
             SkeletonMeshResource = skeletonMesh,
+            SkeletonMeshLocation = skeletonLocation,
             SkeletonName = skeleton.Name,
             SkeletonBoneCount = skeleton.BoneCount,
             Parts = parts
@@ -253,6 +255,24 @@ public sealed class SceneCharacterAppearanceBuilder
         }
 
         return Path.GetFullPath(clientRootPath);
+    }
+
+    private static SceneResourceLocation ResolveSkeletonLocation(
+        string clientRoot,
+        IReadOnlyDictionary<string, string> packageIndex,
+        SceneResourceReference skeletonMesh)
+    {
+        if (!packageIndex.TryGetValue(skeletonMesh.PackageName, out var packagePath))
+        {
+            throw new InvalidOperationException($"Package '{skeletonMesh.PackageName}' for skeletal mesh '{skeletonMesh.Reference}' was not found under client root.");
+        }
+
+        return SceneReferenceUtilities.BuildResourceLocation(
+            clientRoot,
+            packagePath,
+            skeletonMesh.PackageName,
+            skeletonMesh.ObjectName,
+            skeletonMesh.ClassName);
     }
 
     private static ResolvedSkeleton ResolveSkeleton(
