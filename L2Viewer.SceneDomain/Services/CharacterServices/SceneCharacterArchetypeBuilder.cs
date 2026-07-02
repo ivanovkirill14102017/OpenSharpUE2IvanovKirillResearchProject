@@ -42,7 +42,7 @@ public sealed class SceneCharacterArchetypeBuilder
         var warnings = new List<string>();
         var slots = new[]
         {
-            BuildSlot(clientRoot, packageIndex, "Hair", entry.Hair, Array.Empty<string>()),
+            BuildSlot(clientRoot, packageIndex, "Hair", entry.Hair.Meshes, entry.Hair.Textures),
             BuildSlot(clientRoot, packageIndex, "Face", entry.Face.Meshes, entry.Face.Textures),
             BuildSlot(clientRoot, packageIndex, "Gloves", entry.Gloves.Meshes, entry.Gloves.Textures),
             BuildSlot(clientRoot, packageIndex, "Upper", entry.Upper.Meshes, entry.Upper.Textures),

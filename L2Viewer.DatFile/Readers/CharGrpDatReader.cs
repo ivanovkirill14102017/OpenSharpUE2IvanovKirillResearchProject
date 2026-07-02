@@ -11,9 +11,7 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
         var decoded = DatDecodedFileReader.ReadDecodedBytes(path);
         try
         {
-            var interludeReader = new DatBinaryReader(decoded);
-            var interludeDocument = ReadInterludeDocument(path, interludeReader);
-            interludeReader.EnsureFullyConsumedOrSafePackage();
+            var interludeDocument = ReadInterludeDocument(path, decoded);
             return interludeDocument;
         }
         catch (Exception ex) when (ex is EndOfStreamException or InvalidDataException or OverflowException)
@@ -53,8 +51,9 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
             $"Unable to parse chargrp.dat with supported layouts. {string.Join(" | ", errors)}");
     }
 
-    private static CharGrpDatDocument ReadInterludeDocument(string path, DatBinaryReader reader)
+    private static CharGrpDatDocument ReadInterludeDocument(string path, byte[] decoded)
     {
+        var reader = new InterludeProbeReader(decoded);
         const int count = 15;
         var entries = new List<CharGrpDatEntry>(count);
         for (var i = 0; i < count; i++)
@@ -64,28 +63,31 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
             var hairTextureCount = checked((int)reader.ReadUInt32());
             var faceMeshCount = checked((int)reader.ReadUInt32());
             var faceTextureCount = checked((int)reader.ReadUInt32());
-            var hairMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, hairMeshCount);
-            _ = DatReaderPrimitives.ReadUnicodeArray(reader, hairTextureCount);
-            var faceMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, faceMeshCount);
-            var faceTextures = DatReaderPrimitives.ReadUnicodeArray(reader, faceTextureCount);
-            var bodyMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, 4);
-            var bodyTextures = DatReaderPrimitives.ReadUnicodeArray(reader, 4);
+            var hairMeshes = reader.ReadUnicodeArray(hairMeshCount);
+            var hairTextures = reader.ReadUnicodeArray(hairTextureCount);
+            var faceMeshes = reader.ReadUnicodeArray(faceMeshCount);
+            var faceTextures = reader.ReadUnicodeArray(faceTextureCount);
+            var bodyMeshes = reader.ReadUnicodeArray(4);
+            var bodyTextures = reader.ReadUnicodeArray(4);
             var attackEffect = reader.ReadUnicodeString32();
             var walkAnimationFrame = reader.ReadUInt32();
-            var attackSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var defenseSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var damageSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var voiceHandSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var voiceOneHandSwordSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var voiceTwoHandSwordSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var voiceDualSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var voicePoleSounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var reserve1Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var reserve2Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
-            var reserve3Sounds = DatReaderPrimitives.ReadUnicodeArray(reader, checked((int)reader.ReadUInt32()));
+            var attackSoundCount = checked((int)reader.ReadUInt32());
+            var defenseSoundCount = checked((int)reader.ReadUInt32());
+            var damageSoundCount = checked((int)reader.ReadUInt32());
+            var attackSounds = reader.ReadUnicodeArray(attackSoundCount);
+            var defenseSounds = reader.ReadUnicodeArray(defenseSoundCount);
+            var damageSounds = reader.ReadUnicodeArray(damageSoundCount);
+            var voiceHandSounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var voiceOneHandSwordSounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var voiceTwoHandSwordSounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var voiceDualSounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var voicePoleSounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var reserve1Sounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var reserve2Sounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
+            var reserve3Sounds = reader.ReadUnicodeArray(checked((int)reader.ReadUInt32()));
 
             entries.Add(new CharGrpDatEntry(
-                hairMeshes,
+                new DatMeshTextureSet(hairMeshes, hairTextures),
                 new DatMeshTextureSet(faceMeshes, faceTextures),
                 faceIcon.Length == 0 ? Array.Empty<byte>() : Encoding.Unicode.GetBytes(faceIcon),
                 BuildEquipment(bodyMeshes, bodyTextures, 2),
@@ -111,7 +113,60 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
                 0u));
         }
 
+        if (reader.Remaining != 13)
+        {
+            throw new InvalidDataException($"Interlude chargrp left unexpected tail: {reader.Remaining} bytes.");
+        }
+
         return new CharGrpDatDocument(path, entries);
+    }
+
+    private sealed class InterludeProbeReader(byte[] buffer)
+    {
+        private int _offset;
+
+        public int Remaining => buffer.Length - _offset;
+
+        public uint ReadUInt32()
+        {
+            EnsureAvailable(4);
+            var value = BitConverter.ToUInt32(buffer, _offset);
+            _offset += 4;
+            return value;
+        }
+
+        public string ReadUnicodeString32()
+        {
+            var length = checked((int)ReadUInt32());
+            if (length < 0 || (length & 1) != 0)
+            {
+                throw new InvalidDataException($"Invalid UTF-16 string length {length} at offset {_offset}.");
+            }
+
+            EnsureAvailable(length);
+            var value = Encoding.Unicode.GetString(buffer, _offset, length);
+            _offset += length;
+            return value.EndsWith('\0') ? value[..^1] : value;
+        }
+
+        public IReadOnlyList<string> ReadUnicodeArray(int count)
+        {
+            var result = new List<string>(count);
+            for (var i = 0; i < count; i++)
+            {
+                result.Add(ReadUnicodeString32());
+            }
+
+            return result;
+        }
+
+        private void EnsureAvailable(int count)
+        {
+            if (_offset + count > buffer.Length)
+            {
+                throw new EndOfStreamException($"Unexpected end of DAT buffer at offset {_offset}.");
+            }
+        }
     }
 
     private static CharGrpEquipmentDatEntry BuildEquipment(
@@ -245,7 +300,7 @@ public sealed class CharGrpDatReader : DatSchemaReader<CharGrpDatDocument>
                 }
 
                 entries.Add(new CharGrpDatEntry(
-                    hair,
+                    new DatMeshTextureSet(hair, Array.Empty<string>()),
                     new DatMeshTextureSet(faceMeshes, faceTextures),
                     reservedBlock1,
                     gloves,

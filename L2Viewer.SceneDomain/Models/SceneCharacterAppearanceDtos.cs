@@ -41,13 +41,26 @@ public enum SceneCharacterVisualFamily
 }
 
 [ForExternalUse]
-public enum SceneCharacterEquipmentSlot
+public enum SceneCharacterPaperdollSlot
 {
-    Face,
-    Upper,
-    Lower,
-    Gloves,
-    Boots
+    Under = 0,
+    LeftEar = 1,
+    RightEar = 2,
+    Neck = 3,
+    LeftFinger = 4,
+    RightFinger = 5,
+    Head = 6,
+    RightHand = 7,
+    LeftHand = 8,
+    Gloves = 9,
+    Chest = 10,
+    Legs = 11,
+    Feet = 12,
+    Back = 13,
+    LeftRightHand = 14,
+    Face = 15,
+    Hair = 16,
+    DoubleHair = 17
 }
 
 [ForExternalUse]
@@ -55,6 +68,9 @@ public sealed class SceneCharacterAppearanceRequest
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
     public required SceneCharacterGender Gender { get; init; }
+    public int FaceId { get; init; }
+    public int HairStyleId { get; init; }
+    public int HairColorId { get; init; }
     public int? UpperItemId { get; init; }
     public int? LowerItemId { get; init; }
     public int? GlovesItemId { get; init; }
@@ -66,6 +82,9 @@ public sealed class SceneCharacterAppearanceData
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
     public required SceneCharacterGender Gender { get; init; }
+    public required int FaceId { get; init; }
+    public required int HairStyleId { get; init; }
+    public required int HairColorId { get; init; }
     public required SceneCharacterVisualFamily VisualFamily { get; init; }
     public required int CharGrpIndex { get; init; }
     public required SceneResourceReference SkeletonMeshResource { get; init; }
@@ -77,7 +96,7 @@ public sealed class SceneCharacterAppearanceData
 
 public sealed class SceneCharacterResolvedPartData
 {
-    public required SceneCharacterEquipmentSlot Slot { get; init; }
+    public required SceneCharacterPaperdollSlot Slot { get; init; }
     public int? ItemId { get; init; }
     public required bool IsBasePart { get; init; }
     public required SceneResourceReference[] MeshResources { get; init; }

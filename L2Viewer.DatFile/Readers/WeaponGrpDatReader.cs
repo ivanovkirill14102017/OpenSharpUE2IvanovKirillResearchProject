@@ -9,6 +9,14 @@ public sealed class WeaponGrpDatReader : DatSchemaReader<WeaponGrpDatDocument>
     public override WeaponGrpDatDocument Read(string path)
     {
         var decoded = DatDecodedFileReader.ReadDecodedBytes(path);
+        try
+        {
+            return ReadInterlude(path, decoded);
+        }
+        catch (Exception ex) when (ex is EndOfStreamException or InvalidDataException or OverflowException)
+        {
+        }
+
         var reader = new DatBinaryReader(decoded);
         var count = reader.ReadInt32();
         var entries = new List<WeaponGrpDatEntry>(Math.Max(count, 0));
@@ -32,6 +40,307 @@ public sealed class WeaponGrpDatReader : DatSchemaReader<WeaponGrpDatDocument>
 
         reader.EnsureFullyConsumedOrSafePackage();
         return new WeaponGrpDatDocument(path, entries);
+    }
+
+    private static WeaponGrpDatDocument ReadInterlude(string path, byte[] decoded)
+    {
+        var reader = new DatBinaryReader(decoded);
+        var count = reader.ReadInt32();
+        if (count < 0)
+        {
+            throw new InvalidDataException($"Unexpected Interlude weapongrp count '{count}'.");
+        }
+
+        var entries = new List<WeaponGrpDatEntry>(count);
+        var safePackageStart = GetSafePackageStart(decoded);
+        for (var i = 0; i < count; i++)
+        {
+            entries.Add(ReadInterludeEntry(reader, i == count - 1, safePackageStart));
+        }
+
+        reader.EnsureFullyConsumedOrSafePackage();
+        return new WeaponGrpDatDocument(path, entries);
+    }
+
+    private static WeaponGrpDatEntry ReadInterludeEntry(DatBinaryReader reader, bool isLastEntry, int safePackageStart)
+    {
+        var entryStart = reader.Position;
+        if (!TryReadInterludeCore(reader, out var knownData, out var tailStart))
+        {
+            reader.Position = entryStart;
+            throw new InvalidDataException($"Failed to read Interlude weapongrp entry at offset {entryStart}.");
+        }
+
+        int tailEnd;
+        if (isLastEntry)
+        {
+            if (tailStart > safePackageStart)
+            {
+                throw new InvalidDataException($"Interlude weapongrp tail starts past safe-package boundary at offset {tailStart}.");
+            }
+
+            tailEnd = safePackageStart;
+        }
+        else
+        {
+            tailEnd = FindNextInterludeEntryStart(reader, tailStart, safePackageStart, knownData.Id);
+            if (tailEnd < 0)
+            {
+                throw new InvalidDataException($"Failed to locate next Interlude weapongrp entry after offset {tailStart}.");
+            }
+        }
+
+        reader.Position = tailStart;
+        var unknownTail = reader.ReadBytes(tailEnd - tailStart);
+        reader.Position = tailEnd;
+
+        return new WeaponGrpDatEntry(
+            knownData.Tag,
+            knownData.Id,
+            knownData.DropType,
+            knownData.DropAnimationType,
+            knownData.DropRadius,
+            knownData.DropHeight,
+            knownData.Unknown0,
+            knownData.DropMesh1,
+            knownData.DropMesh2,
+            knownData.DropMesh3,
+            knownData.DropTexture1,
+            knownData.DropTexture2,
+            knownData.DropTexture3,
+            knownData.Icons,
+            knownData.Durability,
+            knownData.Weight,
+            knownData.Material,
+            knownData.Crystallizable,
+            knownData.Unknown1,
+            Array.Empty<uint>(),
+            string.Empty,
+            knownData.BodyPart,
+            knownData.Handness,
+            knownData.WeaponMeshes,
+            knownData.WeaponTextures,
+            knownData.ItemSounds,
+            knownData.DropSound,
+            knownData.EquipSound,
+            knownData.Effect,
+            knownData.RandomDamage,
+            knownData.PhysicalAttack,
+            knownData.MagicalAttack,
+            knownData.WeaponType,
+            knownData.CrystalType,
+            knownData.Critical,
+            knownData.HitModifier,
+            knownData.AvoidModifier,
+            knownData.ShieldPhysicalDefense,
+            knownData.ShieldRate,
+            knownData.Speed,
+            knownData.MpConsume,
+            knownData.SoulShotCount,
+            knownData.SpiritShotCount,
+            knownData.Curvature,
+            knownData.Unknown3,
+            knownData.IsHero,
+            knownData.Unknown4,
+            unknownTail);
+    }
+
+    private static bool TryReadInterludeCore(
+        DatBinaryReader reader,
+        out WeaponEntryKnownData entry,
+        out int tailStart)
+    {
+        var start = reader.Position;
+
+        try
+        {
+            var tag = reader.ReadUInt32();
+            var id = reader.ReadUInt32();
+            var dropType = reader.ReadUInt32();
+            var dropAnimationType = reader.ReadUInt32();
+            var dropRadius = reader.ReadUInt32();
+            var dropHeight = reader.ReadUInt32();
+            var unknown0 = reader.ReadUInt32();
+            var dropMesh1 = reader.ReadUnicodeString32();
+            var dropMesh2 = reader.ReadUnicodeString32();
+            var dropMesh3 = reader.ReadUnicodeString32();
+            var dropTexture1 = reader.ReadUnicodeString32();
+            var dropTexture2 = reader.ReadUnicodeString32();
+            var dropTexture3 = reader.ReadUnicodeString32();
+            var icons = DatReaderPrimitives.ReadUnicodeArray(reader, 5);
+            var durability = reader.ReadInt32();
+            var weight = reader.ReadUInt32();
+            var material = reader.ReadUInt32();
+            var crystallizable = reader.ReadUInt32();
+            var unknown1 = reader.ReadUInt32();
+            var bodyPart = reader.ReadUInt32();
+            var handness = reader.ReadUInt32();
+            var weaponMeshCount = checked((int)reader.ReadUInt32());
+            var weaponMeshes = DatReaderPrimitives.ReadUnicodeArray(reader, weaponMeshCount);
+            var weaponTextureCount = checked((int)reader.ReadUInt32());
+            var weaponTextures = DatReaderPrimitives.ReadUnicodeArray(reader, weaponTextureCount);
+            var itemSoundCount = checked((int)reader.ReadUInt32());
+            var itemSounds = DatReaderPrimitives.ReadUnicodeArray(reader, itemSoundCount);
+            var dropSound = reader.ReadUnicodeString32();
+            var equipSound = reader.ReadUnicodeString32();
+            var effect = reader.ReadUnicodeString32();
+            var randomDamage = reader.ReadUInt32();
+            var physicalAttack = reader.ReadUInt32();
+            var magicalAttack = reader.ReadUInt32();
+            var weaponType = reader.ReadUInt32();
+            var crystalType = reader.ReadUInt32();
+            var critical = reader.ReadUInt32();
+            var hitModifier = reader.ReadInt32();
+            var avoidModifier = reader.ReadInt32();
+            var shieldPhysicalDefense = reader.ReadUInt32();
+            var shieldRate = reader.ReadUInt32();
+            var speed = reader.ReadUInt32();
+            var mpConsume = reader.ReadUInt32();
+            var soulShotCount = reader.ReadUInt32();
+            var spiritShotCount = reader.ReadUInt32();
+            var curvature = reader.ReadUInt32();
+            var unknown3 = reader.ReadUInt32();
+            var isHero = reader.ReadInt32();
+            var unknown4 = reader.ReadUInt32();
+            tailStart = reader.Position;
+            entry = new WeaponEntryKnownData(
+                tag,
+                id,
+                dropType,
+                dropAnimationType,
+                dropRadius,
+                dropHeight,
+                unknown0,
+                dropMesh1,
+                dropMesh2,
+                dropMesh3,
+                dropTexture1,
+                dropTexture2,
+                dropTexture3,
+                icons,
+                durability,
+                weight,
+                material,
+                crystallizable,
+                unknown1,
+                Array.Empty<uint>(),
+                string.Empty,
+                bodyPart,
+                handness,
+                weaponMeshes,
+                weaponTextures,
+                itemSounds,
+                dropSound,
+                equipSound,
+                effect,
+                randomDamage,
+                physicalAttack,
+                magicalAttack,
+                weaponType,
+                crystalType,
+                critical,
+                hitModifier,
+                avoidModifier,
+                shieldPhysicalDefense,
+                shieldRate,
+                speed,
+                mpConsume,
+                soulShotCount,
+                spiritShotCount,
+                curvature,
+                unknown3,
+                isHero,
+                unknown4);
+            return true;
+        }
+        catch
+        {
+            reader.Position = start;
+            entry = default!;
+            tailStart = start;
+            return false;
+        }
+    }
+
+    private static int FindNextInterludeEntryStart(DatBinaryReader reader, int start, int safePackageStart, uint currentId)
+    {
+        var scanLimit = Math.Min(safePackageStart, start + MaxTailScanBytes);
+        for (var candidate = start; candidate <= scanLimit; candidate += 2)
+        {
+            if (LooksLikeNextInterludeEntryHeader(reader, candidate, safePackageStart, currentId) &&
+                CanReadInterludeCoreAt(reader, candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool LooksLikeNextInterludeEntryHeader(DatBinaryReader reader, int candidate, int safePackageStart, uint currentId)
+    {
+        var savedPosition = reader.Position;
+        try
+        {
+            if (candidate < 0 || candidate + (sizeof(int) * 8) > safePackageStart)
+            {
+                return false;
+            }
+
+            reader.Position = candidate;
+            var tag = reader.ReadUInt32();
+            var id = reader.ReadUInt32();
+            var dropType = reader.ReadUInt32();
+            var dropAnimationType = reader.ReadUInt32();
+            var dropRadius = reader.ReadUInt32();
+            var dropHeight = reader.ReadUInt32();
+            var unknown0 = reader.ReadUInt32();
+            var firstStringLength = reader.ReadInt32();
+
+            if (tag > 1)
+            {
+                return false;
+            }
+
+            if (id <= currentId || id - currentId > 10000)
+            {
+                return false;
+            }
+
+            if (dropType > 64 || dropAnimationType > 64 || dropRadius > 4096 || dropHeight > 4096 || unknown0 > 4096)
+            {
+                return false;
+            }
+
+            if (firstStringLength < 0 ||
+                (firstStringLength & 1) != 0 ||
+                firstStringLength > MaxReasonableStringByteLength ||
+                firstStringLength > safePackageStart - reader.Position)
+            {
+                return false;
+            }
+
+            reader.Position += firstStringLength;
+            return TrySkipUnicodeArray(reader, 5);
+        }
+        finally
+        {
+            reader.Position = savedPosition;
+        }
+    }
+
+    private static bool CanReadInterludeCoreAt(DatBinaryReader reader, int candidate)
+    {
+        var savedPosition = reader.Position;
+        try
+        {
+            reader.Position = candidate;
+            return TryReadInterludeCore(reader, out _, out _);
+        }
+        finally
+        {
+            reader.Position = savedPosition;
+        }
     }
 
     private static WeaponGrpDatEntry ReadEntry(DatBinaryReader reader, bool isLastEntry, int safePackageStart)

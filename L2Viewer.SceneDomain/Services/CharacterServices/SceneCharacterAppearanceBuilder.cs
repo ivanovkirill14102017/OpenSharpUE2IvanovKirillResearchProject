@@ -8,6 +8,8 @@ namespace L2Viewer.SceneDomain.Services.CharacterServices;
 [ForExternalUse]
 public sealed class SceneCharacterAppearanceBuilder
 {
+    private readonly SceneCharacterAppearanceOptionsBuilder _optionsBuilder = new();
+
     public SceneCharacterAppearanceData Build(string clientRootPath, SceneCharacterAppearanceRequest request)
     {
         if (request is null)
@@ -17,19 +19,35 @@ public sealed class SceneCharacterAppearanceBuilder
 
         var clientRoot = NormalizeClientRoot(clientRootPath);
         var visualFamily = ResolveVisualFamily(request.BaseClass, request.Gender);
-        var familyBinding = GetFamilyBinding(visualFamily);
+        var familyBinding = SceneCharacterVisualFamilyBindings.Get(visualFamily);
+        var appearanceOptions = _optionsBuilder.Build(clientRoot, request.BaseClass, request.Gender);
+        var selectedFace = appearanceOptions.FaceOptions.FirstOrDefault(x => x.Id == request.FaceId)
+            ?? throw new ArgumentOutOfRangeException(nameof(request.FaceId), request.FaceId, "Requested face id is not available in the client.");
+        var selectedHairStyle = appearanceOptions.HairStyleOptions.FirstOrDefault(x => x.Id == request.HairStyleId)
+            ?? throw new ArgumentOutOfRangeException(nameof(request.HairStyleId), request.HairStyleId, "Requested hair style id is not available in the client.");
+        var selectedHairColor = selectedHairStyle.HairColorOptions.FirstOrDefault(x => x.Id == request.HairColorId)
+            ?? throw new ArgumentOutOfRangeException(nameof(request.HairColorId), request.HairColorId, "Requested hair color id is not available for the selected hair style.");
+
+        var charGrp = DatFileReader.ReadDocument<CharGrpDatDocument>(Path.Combine(clientRoot, "system", "chargrp.dat"));
         var armorGrp = DatFileReader.ReadDocument<ArmorGrpDatDocument>(Path.Combine(clientRoot, "system", "armorgrp.dat"));
+        if (appearanceOptions.CharGrpIndex < 0 || appearanceOptions.CharGrpIndex >= charGrp.Entries.Count)
+        {
+            throw new InvalidOperationException($"chargrp entry '{appearanceOptions.CharGrpIndex}' is not available for visual family '{visualFamily}'.");
+        }
+
+        var charGrpEntry = charGrp.Entries[appearanceOptions.CharGrpIndex];
         var packageIndex = ScenePackageIndexer.BuildResourcePackageIndex(clientRoot);
         var parts = new[]
         {
-            BuildFacePart(familyBinding.BaseParts),
-            BuildBodyPart(armorGrp, familyBinding, SceneCharacterEquipmentSlot.Upper, request.UpperItemId, familyBinding.BaseParts.UpperMesh, familyBinding.BaseParts.UpperTexture),
-            BuildBodyPart(armorGrp, familyBinding, SceneCharacterEquipmentSlot.Lower, request.LowerItemId, familyBinding.BaseParts.LowerMesh, familyBinding.BaseParts.LowerTexture),
-            BuildBodyPart(armorGrp, familyBinding, SceneCharacterEquipmentSlot.Gloves, request.GlovesItemId, familyBinding.BaseParts.GlovesMesh, familyBinding.BaseParts.GlovesTexture),
-            BuildBodyPart(armorGrp, familyBinding, SceneCharacterEquipmentSlot.Boots, request.BootsItemId, familyBinding.BaseParts.BootsMesh, familyBinding.BaseParts.BootsTexture)
+            BuildFacePart(selectedFace),
+            BuildHairPart(selectedHairStyle, selectedHairColor),
+            BuildBodyPart(armorGrp, familyBinding, SceneCharacterPaperdollSlot.Chest, request.UpperItemId, charGrpEntry.Upper.Meshes, charGrpEntry.Upper.Textures),
+            BuildBodyPart(armorGrp, familyBinding, SceneCharacterPaperdollSlot.Legs, request.LowerItemId, charGrpEntry.Lower.Meshes, charGrpEntry.Lower.Textures),
+            BuildBodyPart(armorGrp, familyBinding, SceneCharacterPaperdollSlot.Gloves, request.GlovesItemId, charGrpEntry.Gloves.Meshes, charGrpEntry.Gloves.Textures),
+            BuildBodyPart(armorGrp, familyBinding, SceneCharacterPaperdollSlot.Feet, request.BootsItemId, charGrpEntry.Boots.Meshes, charGrpEntry.Boots.Textures)
         };
 
-        var skeletonPart = parts.FirstOrDefault(x => x.MeshResources.Length > 0 && x.Slot is SceneCharacterEquipmentSlot.Upper or SceneCharacterEquipmentSlot.Lower)
+        var skeletonPart = parts.FirstOrDefault(x => x.MeshResources.Length > 0 && x.Slot is SceneCharacterPaperdollSlot.Chest or SceneCharacterPaperdollSlot.Legs)
             ?? parts.FirstOrDefault(x => x.MeshResources.Length > 0)
             ?? throw new InvalidOperationException($"Visual family '{visualFamily}' has no skeletal mesh resources.");
         var skeletonMesh = skeletonPart.MeshResources[0];
@@ -40,6 +58,9 @@ public sealed class SceneCharacterAppearanceBuilder
         {
             BaseClass = request.BaseClass,
             Gender = request.Gender,
+            FaceId = selectedFace.Id,
+            HairStyleId = selectedHairStyle.Id,
+            HairColorId = selectedHairColor.Id,
             VisualFamily = visualFamily,
             CharGrpIndex = familyBinding.CharGrpIndex,
             SkeletonMeshResource = skeletonMesh,
@@ -76,26 +97,39 @@ public sealed class SceneCharacterAppearanceBuilder
         };
     }
 
-    private static SceneCharacterResolvedPartData BuildFacePart(
-        BaseCharacterPartSet baseParts)
+    private static SceneCharacterResolvedPartData BuildFacePart(SceneCharacterFaceOptionData faceOption)
     {
         return new SceneCharacterResolvedPartData
         {
-            Slot = SceneCharacterEquipmentSlot.Face,
+            Slot = SceneCharacterPaperdollSlot.Face,
             ItemId = null,
             IsBasePart = true,
-            MeshResources = BuildReferences(baseParts.FaceMeshes, UnrealClassNames.SkeletalMesh),
-            TextureResources = BuildReferences(baseParts.FaceTextures, UnrealClassNames.Texture)
+            MeshResources = faceOption.MeshResources,
+            TextureResources = faceOption.TextureResources
+        };
+    }
+
+    private static SceneCharacterResolvedPartData BuildHairPart(
+        SceneCharacterHairStyleOptionData hairStyleOption,
+        SceneCharacterHairColorOptionData hairColorOption)
+    {
+        return new SceneCharacterResolvedPartData
+        {
+            Slot = SceneCharacterPaperdollSlot.Hair,
+            ItemId = null,
+            IsBasePart = true,
+            MeshResources = hairStyleOption.MeshResources,
+            TextureResources = hairColorOption.TextureResources
         };
     }
 
     private static SceneCharacterResolvedPartData BuildBodyPart(
         ArmorGrpDatDocument armorGrp,
         CharacterVisualFamilyBinding familyBinding,
-        SceneCharacterEquipmentSlot slot,
+        SceneCharacterPaperdollSlot slot,
         int? itemId,
-        string? baseMesh,
-        string? baseTexture)
+        IReadOnlyList<string> baseMeshes,
+        IReadOnlyList<string> baseTextures)
     {
         if (!itemId.HasValue)
         {
@@ -104,8 +138,8 @@ public sealed class SceneCharacterAppearanceBuilder
                 Slot = slot,
                 ItemId = null,
                 IsBasePart = true,
-                MeshResources = BuildReferences(string.IsNullOrWhiteSpace(baseMesh) ? [] : [baseMesh], UnrealClassNames.SkeletalMesh),
-                TextureResources = BuildReferences(string.IsNullOrWhiteSpace(baseTexture) ? [] : [baseTexture], UnrealClassNames.Texture)
+                MeshResources = BuildReferences(baseMeshes, UnrealClassNames.SkeletalMesh),
+                TextureResources = BuildReferences(baseTextures, UnrealClassNames.Texture)
             };
         }
 
@@ -133,112 +167,6 @@ public sealed class SceneCharacterAppearanceBuilder
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(reference => SceneReferenceUtilities.BuildFromDbResourceReference(reference, className))
             .ToArray();
-    }
-
-    private static CharacterVisualFamilyBinding GetFamilyBinding(SceneCharacterVisualFamily family)
-    {
-        return family switch
-        {
-            SceneCharacterVisualFamily.MaleHumanFighter => new CharacterVisualFamilyBinding(0, "m_HumnFigh", new BaseCharacterPartSet(
-                ["Fighter.MFighter_m000_f"],
-                ["MFighter.MFighter_m000_t00_f", "MFighter.MFighter_m000_t01_f", "MFighter.MFighter_m000_t02_f"],
-                "fighter.MFighter_m000_u", "MFighter.MFighter_m000_t1000_u",
-                "fighter.MFighter_m000_l", "MFighter.MFighter_m000_t1000_l",
-                "fighter.MFighter_m000_g", "MFighter.MFighter_m000_t1000_g",
-                "fighter.MFighter_m000_b", "MFighter.MFighter_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleHumanFighter => new CharacterVisualFamilyBinding(1, "f_HumnFigh", new BaseCharacterPartSet(
-                ["Fighter.FFighter_m000_f"],
-                ["FFighter.FFighter_m000_t00_f", "FFighter.FFighter_m000_t01_f", "FFighter.FFighter_m000_t02_f"],
-                "fighter.FFighter_m000_u", "NakedF.FFighter_m000_t1000_u",
-                "fighter.FFighter_m000_l", "NakedF.FFighter_m000_t1000_l",
-                "fighter.FFighter_m000_g", "FFighter.FFighter_m000_t1000_g",
-                "fighter.FFighter_m000_b", "FFighter.FFighter_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleDarkElf => new CharacterVisualFamilyBinding(2, "m_DarkElf", new BaseCharacterPartSet(
-                ["DarkElf.MDarkElf_m000_f"],
-                ["MDarkElf.MDarkElf_m000_t00_f", "MDarkElf.MDarkElf_m000_t01_f", "MDarkElf.MDarkElf_m000_t02_f"],
-                "darkelf.MDarkElf_m000_u", "MDarkElf.MDarkElf_m000_t1000_u",
-                "darkelf.MDarkElf_m000_l", "MDarkElf.MDarkElf_m000_t1000_l",
-                "darkelf.MDarkElf_m000_g", "MDarkElf.MDarkElf_m000_t1000_g",
-                "darkelf.MDarkElf_m000_b", "MDarkElf.MDarkElf_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleDarkElf => new CharacterVisualFamilyBinding(3, "f_DarkElf", new BaseCharacterPartSet(
-                ["DarkElf.FDarkElf_m000_f"],
-                ["FDarkElf.FDarkElf_m000_t00_f", "FDarkElf.FDarkElf_m000_t01_f", "FDarkElf.FDarkElf_m000_t02_f"],
-                "darkelf.FDarkElf_m000_u", "NakedF.FDarkElf_m000_t1000_u",
-                "darkelf.FDarkElf_m000_l", "NakedF.FDarkElf_m000_t1000_l",
-                "darkelf.FDarkElf_m000_g", "FDarkElf.FDarkElf_m000_t1000_g",
-                "darkelf.FDarkElf_m000_b", "FDarkElf.FDarkElf_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleDwarf => new CharacterVisualFamilyBinding(4, "m_Dorf", new BaseCharacterPartSet(
-                ["Dwarf.MDwarf_m000_f"],
-                ["MDwarf.MDwarf_m000_t00_f", "MDwarf.MDwarf_m000_t01_f", "MDwarf.MDwarf_m000_t02_f"],
-                "dwarf.MDwarf_m000_u", "MDwarf.MDwarf_m000_t1000_u",
-                "dwarf.MDwarf_m000_l", "MDwarf.MDwarf_m000_t1000_l",
-                "dwarf.MDwarf_m000_g", "MDwarf.MDwarf_m000_t1000_g",
-                "dwarf.MDwarf_m000_b", "MDwarf.MDwarf_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleDwarf => new CharacterVisualFamilyBinding(5, "f_Dorf", new BaseCharacterPartSet(
-                ["Dwarf.FDwarf_m000_f"],
-                ["FDwarf.FDwarf_m000_t00_f", "FDwarf.FDwarf_m000_t01_f", "FDwarf.FDwarf_m000_t02_f"],
-                "dwarf.FDwarf_m000_u", "NakedF.FDwarf_m000_t1000_u",
-                "dwarf.FDwarf_m000_l", "NakedF.FDwarf_m000_t1000_l",
-                "dwarf.FDwarf_m000_g", "FDwarf.FDwarf_m000_t1000_g",
-                "dwarf.FDwarf_m000_b", "FDwarf.FDwarf_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleElf => new CharacterVisualFamilyBinding(6, "m_Elf", new BaseCharacterPartSet(
-                ["Elf.MElf_m000_f"],
-                ["MElf.MElf_m000_t00_f", "MElf.MElf_m000_t01_f", "MElf.MElf_m000_t02_f"],
-                "elf.MElf_m000_u", "MElf.MElf_m000_t1000_u",
-                "elf.MElf_m000_l", "MElf.MElf_m000_t1000_l",
-                "elf.MElf_m000_g", "MElf.MElf_m000_t1000_g",
-                "elf.MElf_m000_b", "MElf.MElf_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleElf => new CharacterVisualFamilyBinding(7, "f_Elf", new BaseCharacterPartSet(
-                ["Elf.FElf_m000_f"],
-                ["FElf.FElf_m000_t00_f", "FElf.FElf_m000_t01_f", "FElf.FElf_m000_t02_f"],
-                "elf.FElf_m000_u", "NakedF.FElf_m000_t1000_u",
-                "elf.FElf_m000_l", "NakedF.FElf_m000_t1000_l",
-                "elf.FElf_m000_g", "FElf.FElf_m000_t1000_g",
-                "elf.FElf_m000_b", "FElf.FElf_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleHumanMystic => new CharacterVisualFamilyBinding(8, "m_HumnMyst", new BaseCharacterPartSet(
-                ["Magic.MMagic_m000_f"],
-                ["MMagic.MMagic_m000_t00_f", "MMagic.MMagic_m000_t01_f", "MMagic.MMagic_m000_t02_f"],
-                "magic.MMagic_m000_u", "MMagic.MMagic_m000_t1000_u",
-                "magic.MMagic_m000_l", "MMagic.MMagic_m000_t1000_l",
-                "magic.MMagic_m000_g", "MMagic.MMagic_m000_t1000_g",
-                "magic.MMagic_m000_b", "MMagic.MMagic_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleHumanMystic => new CharacterVisualFamilyBinding(9, "f_HumnMyst", new BaseCharacterPartSet(
-                ["Magic.FMagic_m000_f"],
-                ["FMagic.FMagic_m000_t00_f", "FMagic.FMagic_m000_t01_f", "FMagic.FMagic_m000_t02_f"],
-                "magic.FMagic_m000_u", "NakedF.FMagic_m000_t1000_u",
-                "magic.FMagic_m000_l", "NakedF.FMagic_m000_t1000_l",
-                "magic.FMagic_m000_g", "FMagic.FMagic_m000_t1000_g",
-                "magic.FMagic_m000_b", "FMagic.FMagic_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleOrcFighter => new CharacterVisualFamilyBinding(10, "m_OrcFigh", new BaseCharacterPartSet(
-                ["Orc.MOrc_m000_f"],
-                ["MOrc.MOrc_m000_t00_f", "MOrc.MOrc_m000_t01_f", "MOrc.MOrc_m000_t02_f"],
-                "orc.MOrc_m000_u", "MOrc.MOrc_m000_t1000_u",
-                "orc.MOrc_m000_l", "MOrc.MOrc_m000_t1000_l",
-                "orc.MOrc_m000_g", "MOrc.MOrc_m000_t1000_g",
-                "orc.MOrc_m000_b", "MOrc.MOrc_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleOrcFighter => new CharacterVisualFamilyBinding(11, "f_OrcFigh", new BaseCharacterPartSet(
-                ["Orc.FOrc_m000_f"],
-                ["FOrc.FOrc_m000_t00_f", "FOrc.FOrc_m000_t01_f", "FOrc.FOrc_m000_t02_f"],
-                "orc.FOrc_m000_u", "NakedF.FOrc_m000_t1000_u",
-                "orc.FOrc_m000_l", "NakedF.FOrc_m000_t1000_l",
-                "orc.FOrc_m000_g", "FOrc.FOrc_m000_t1000_g",
-                "orc.FOrc_m000_b", "FOrc.FOrc_m000_t1000_b")),
-            SceneCharacterVisualFamily.MaleOrcMage => new CharacterVisualFamilyBinding(12, "m_OrcMage", new BaseCharacterPartSet(
-                ["Shaman.MShaman_m000_f"],
-                ["MShaman.MShaman_m000_t00_f", "MShaman.MShaman_m000_t01_f", "MShaman.MShaman_m000_t02_f"],
-                "shaman.MShaman_m000_u", "MShaman.MShaman_m000_t1000_u",
-                "shaman.MShaman_m000_l", "MShaman.MShaman_m000_t1000_l",
-                "shaman.MShaman_m000_g", "MShaman.MShaman_m000_t1000_g",
-                "shaman.MShaman_m000_b", "MShaman.MShaman_m000_t1000_b")),
-            SceneCharacterVisualFamily.FemaleOrcMage => new CharacterVisualFamilyBinding(13, "f_OrcMage", new BaseCharacterPartSet(
-                ["Shaman.FShaman_m000_f"],
-                ["FShaman.FShaman_m000_t00_f", "FShaman.FShaman_m000_t01_f", "FShaman.FShaman_m000_t02_f"],
-                "shaman.FShaman_m000_u", "NakedF.FShaman_m000_t1000_u",
-                "shaman.FShaman_m000_l", "NakedF.FShaman_m000_t1000_l",
-                "shaman.FShaman_m000_g", "FShaman.FShaman_m000_t1000_g",
-                "shaman.FShaman_m000_b", "FShaman.FShaman_m000_t1000_b")),
-            _ => throw new ArgumentOutOfRangeException(nameof(family), family, null)
-        };
     }
 
     private static string NormalizeClientRoot(string clientRootPath)
@@ -299,17 +227,5 @@ public sealed class SceneCharacterAppearanceBuilder
         return new ResolvedSkeleton(mesh.ObjectName, mesh.RefSkeleton.Length);
     }
 
-    private readonly record struct CharacterVisualFamilyBinding(int CharGrpIndex, string ArmorGroupName, BaseCharacterPartSet BaseParts);
-    private sealed record BaseCharacterPartSet(
-        IReadOnlyList<string> FaceMeshes,
-        IReadOnlyList<string> FaceTextures,
-        string UpperMesh,
-        string UpperTexture,
-        string LowerMesh,
-        string LowerTexture,
-        string GlovesMesh,
-        string GlovesTexture,
-        string BootsMesh,
-        string BootsTexture);
     private readonly record struct ResolvedSkeleton(string Name, int BoneCount);
 }

@@ -633,7 +633,7 @@ public sealed record CharGrpDatDocument(
     IReadOnlyList<CharGrpDatEntry> Entries) : DatDocument(Path);
 
 public sealed record CharGrpDatEntry(
-    IReadOnlyList<string> Hair,
+    DatMeshTextureSet Hair,
     DatMeshTextureSet Face,
     byte[] ReservedBlock1,
     CharGrpEquipmentDatEntry Gloves,
