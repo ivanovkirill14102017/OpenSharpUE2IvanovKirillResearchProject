@@ -12,6 +12,7 @@
     <ProjectReference Include="..\L2Viewer.SceneDTO\L2Viewer.SceneDTO.csproj" />
     <ProjectReference Include="..\L2Viewer.PackageCore\L2Viewer.PackageCore.csproj" />
     <ProjectReference Include="..\L2Viewer.UkxFile\L2Viewer.UkxFile.csproj" />
+    <ProjectReference Include="..\L2Viewer.UFile\L2Viewer.UFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UnrFile\L2Viewer.UnrFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UtxFile\L2Viewer.UtxFile.csproj" />
     <ProjectReference Include="..\L2Viewer.UsxFile\L2Viewer.UsxFile.csproj" />

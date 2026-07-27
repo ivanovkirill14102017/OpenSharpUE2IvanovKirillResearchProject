@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\L2Viewer.PackageCore\L2Viewer.PackageCore.csproj" />
+    <ProjectReference Include="..\L2Viewer.UFile\L2Viewer.UFile.csproj" />
   </ItemGroup>
 
   <ItemGroup>

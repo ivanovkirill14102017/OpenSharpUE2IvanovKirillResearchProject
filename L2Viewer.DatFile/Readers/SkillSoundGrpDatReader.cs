@@ -23,12 +23,28 @@ public sealed class SkillSoundGrpDatReader : DatSchemaReader<SkillSoundGrpDatDoc
 
     private static SkillSoundGrpDatDocument ReadWithCount(string path, byte[] decoded)
     {
+        try
+        {
+            return ReadWithCount(path, decoded, interludeLayout: false);
+        }
+        catch (EndOfStreamException)
+        {
+            return ReadWithCount(path, decoded, interludeLayout: true);
+        }
+        catch (InvalidDataException)
+        {
+            return ReadWithCount(path, decoded, interludeLayout: true);
+        }
+    }
+
+    private static SkillSoundGrpDatDocument ReadWithCount(string path, byte[] decoded, bool interludeLayout)
+    {
         var reader = new DatBinaryReader(decoded);
         var count = reader.ReadInt32();
         var entries = new List<SkillSoundGrpDatEntry>(count);
         for (var i = 0; i < count; i++)
         {
-            entries.Add(ReadEntry(reader));
+            entries.Add(ReadEntry(reader, interludeLayout));
         }
 
         reader.EnsureFullyConsumedOrSafePackage();
@@ -39,16 +55,40 @@ public sealed class SkillSoundGrpDatReader : DatSchemaReader<SkillSoundGrpDatDoc
     {
         var reader = new DatBinaryReader(decoded);
         var entries = new List<SkillSoundGrpDatEntry>();
-        while (reader.Remaining > 0 && !reader.IsAtSafePackageRemainder())
+        try
         {
-            entries.Add(ReadEntry(reader));
+            while (reader.Remaining > 0 && !reader.IsAtSafePackageRemainder())
+            {
+                entries.Add(ReadEntry(reader, interludeLayout: false));
+            }
+        }
+        catch (EndOfStreamException)
+        {
+            return ReadUntilEnd(path, decoded, interludeLayout: true);
+        }
+        catch (InvalidDataException)
+        {
+            return ReadUntilEnd(path, decoded, interludeLayout: true);
         }
 
         reader.EnsureFullyConsumedOrSafePackage();
         return new SkillSoundGrpDatDocument(path, entries);
     }
 
-    private static SkillSoundGrpDatEntry ReadEntry(DatBinaryReader reader)
+    private static SkillSoundGrpDatDocument ReadUntilEnd(string path, byte[] decoded, bool interludeLayout)
+    {
+        var reader = new DatBinaryReader(decoded);
+        var entries = new List<SkillSoundGrpDatEntry>();
+        while (reader.Remaining > 0 && !reader.IsAtSafePackageRemainder())
+        {
+            entries.Add(ReadEntry(reader, interludeLayout));
+        }
+
+        reader.EnsureFullyConsumedOrSafePackage();
+        return new SkillSoundGrpDatDocument(path, entries);
+    }
+
+    private static SkillSoundGrpDatEntry ReadEntry(DatBinaryReader reader, bool interludeLayout)
     {
         var skillId = reader.ReadUInt32();
         var skillLevel = reader.ReadUInt32();
@@ -58,8 +98,8 @@ public sealed class SkillSoundGrpDatReader : DatSchemaReader<SkillSoundGrpDatDoc
         var shotValues = ReadSingleArray(reader, 6);
         var expSounds = ReadUnicodeArray(reader, 3);
         var expValues = ReadSingleArray(reader, 6);
-        var subSounds = ReadUnicodeArray(reader, 16);
-        var throwSounds = ReadUnicodeArray(reader, 18);
+        var subSounds = ReadUnicodeArray(reader, interludeLayout ? 15 : 16);
+        var throwSounds = ReadUnicodeArray(reader, interludeLayout ? 15 : 18);
         return new SkillSoundGrpDatEntry(
             skillId,
             skillLevel,
