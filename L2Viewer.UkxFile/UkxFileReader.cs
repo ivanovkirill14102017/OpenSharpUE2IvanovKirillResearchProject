@@ -1,9 +1,12 @@
+using System.Collections.Concurrent;
 using L2Viewer.PackageCore;
 
 namespace L2Viewer.UkxFile;
 
 public static class UkxFileReader
 {
+    private static readonly ConcurrentDictionary<string, Lazy<UkxFile>> Cache = new(StringComparer.OrdinalIgnoreCase);
+
     public static UkxFile Read(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -11,12 +14,21 @@ public static class UkxFileReader
             throw new ArgumentException("Path is empty.", nameof(path));
         }
 
-        if (!File.Exists(path))
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath))
         {
-            throw new FileNotFoundException("UKX file was not found.", path);
+            throw new FileNotFoundException("UKX file was not found.", fullPath);
         }
 
-        var package = PackageReader.LoadPackage(path);
+        var lazy = Cache.GetOrAdd(
+            fullPath,
+            static key => new Lazy<UkxFile>(() => ReadCore(key), LazyThreadSafetyMode.ExecutionAndPublication));
+        return lazy.Value;
+    }
+
+    private static UkxFile ReadCore(string fullPath)
+    {
+        var package = PackageReader.LoadPackage(fullPath);
         var names = package.Names
             .Select((name, index) => new UkxFileNameEntry(index, name))
             .ToArray();
@@ -44,7 +56,7 @@ public static class UkxFileReader
         }
 
         return new UkxFile(
-            path,
+            fullPath,
             package.Wrapper,
             new UkxFileHeader(
                 package.Header.Version,

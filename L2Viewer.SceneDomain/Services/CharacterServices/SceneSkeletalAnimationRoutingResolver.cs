@@ -5,6 +5,16 @@ namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
 internal static class SceneSkeletalAnimationRoutingResolver
 {
+    private sealed class RoutingDataset
+    {
+        public required IReadOnlyDictionary<string, NpcGrpDatEntry[]> NpcVisualsByMesh { get; init; }
+        public required IReadOnlyDictionary<int, NpcNameDatEntry> NpcNamesById { get; init; }
+        public required IReadOnlyDictionary<int, MobSkillAnimGrpDatEntry[]> MobSkillAnimationsByNpcId { get; init; }
+    }
+
+    private static readonly object Sync = new();
+    private static readonly Dictionary<string, RoutingDataset> DatasetCache = new(StringComparer.OrdinalIgnoreCase);
+
     public static (IReadOnlyList<SceneSkeletalAnimationRoutingProfile> Profiles, IReadOnlyList<string> Warnings, bool RequiresExplicitConsumerRouting) BuildRoutingMetadata(
         string packagePath,
         string meshObjectName,
@@ -38,23 +48,15 @@ internal static class SceneSkeletalAnimationRoutingResolver
             return ([], warnings, true);
         }
 
+        var dataset = GetOrLoadDataset(systemRoot, npcGrpPath, npcNamePath, mobSkillAnimPath);
         var packageName = Path.GetFileNameWithoutExtension(packagePath);
         var meshReference = $"{packageName}.{meshObjectName}";
-        var npcVisuals = DatFileReader.ReadDocument<NpcGrpDatDocument>(npcGrpPath).Entries
-            .Where(x => string.Equals(x.Mesh, meshReference, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(x => x.Tag)
-            .ToArray();
-        if (npcVisuals.Length == 0)
+        if (!dataset.NpcVisualsByMesh.TryGetValue(meshReference, out var npcVisuals) || npcVisuals.Length == 0)
         {
             warnings.Add($"No npcgrp.dat entries were found for mesh '{meshReference}'. Consumer should consider all sequences eligible.");
             return ([], warnings, true);
         }
 
-        var npcNames = DatFileReader.ReadDocument<NpcNameDatDocument>(npcNamePath).Entries
-            .ToDictionary(x => (int)x.Id);
-        var mobSkillAnimations = DatFileReader.ReadDocument<MobSkillAnimGrpDatDocument>(mobSkillAnimPath).Entries
-            .GroupBy(x => x.NpcId)
-            .ToDictionary(x => x.Key, x => x.OrderBy(y => y.SkillId).ToArray());
         var sequenceCategoryByName = sequences
             .ToDictionary(x => x.Name, x => x.Category, StringComparer.OrdinalIgnoreCase);
 
@@ -62,7 +64,7 @@ internal static class SceneSkeletalAnimationRoutingResolver
         foreach (var npcVisual in npcVisuals)
         {
             var npcId = (int)npcVisual.Tag;
-            mobSkillAnimations.TryGetValue(npcId, out var triggers);
+            dataset.MobSkillAnimationsByNpcId.TryGetValue(npcId, out var triggers);
             triggers ??= [];
 
             var missingTriggerSequences = triggers
@@ -74,7 +76,7 @@ internal static class SceneSkeletalAnimationRoutingResolver
                 warnings.Add($"NPC {npcId} ({npcVisual.Class}) references unknown animation sequences: {string.Join(", ", missingTriggerSequences)}.");
             }
 
-            npcNames.TryGetValue(npcId, out var npcName);
+            dataset.NpcNamesById.TryGetValue(npcId, out var npcName);
             profiles.Add(new SceneSkeletalAnimationRoutingProfile
             {
                 NpcId = npcId,
@@ -108,6 +110,40 @@ internal static class SceneSkeletalAnimationRoutingResolver
                                               warnings.Count > 0 ||
                                               profiles.All(x => x.SkillTriggers.Count == 0);
         return (profiles, warnings, requiresExplicitConsumerRouting);
+    }
+
+    private static RoutingDataset GetOrLoadDataset(string systemRoot, string npcGrpPath, string npcNamePath, string mobSkillAnimPath)
+    {
+        var key = Path.GetFullPath(systemRoot);
+        lock (Sync)
+        {
+            if (DatasetCache.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+        }
+
+        var dataset = new RoutingDataset
+        {
+            NpcVisualsByMesh = DatFileReader.ReadDocument<NpcGrpDatDocument>(npcGrpPath).Entries
+                .GroupBy(x => x.Mesh ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    x => x.Key,
+                    x => x.OrderBy(y => y.Tag).ToArray(),
+                    StringComparer.OrdinalIgnoreCase),
+            NpcNamesById = DatFileReader.ReadDocument<NpcNameDatDocument>(npcNamePath).Entries
+                .ToDictionary(x => (int)x.Id),
+            MobSkillAnimationsByNpcId = DatFileReader.ReadDocument<MobSkillAnimGrpDatDocument>(mobSkillAnimPath).Entries
+                .GroupBy(x => x.NpcId)
+                .ToDictionary(x => x.Key, x => x.OrderBy(y => y.SkillId).ToArray())
+        };
+
+        lock (Sync)
+        {
+            DatasetCache[key] = dataset;
+        }
+
+        return dataset;
     }
 
     private static bool TryResolveClientRoot(string packagePath, out string clientRoot)

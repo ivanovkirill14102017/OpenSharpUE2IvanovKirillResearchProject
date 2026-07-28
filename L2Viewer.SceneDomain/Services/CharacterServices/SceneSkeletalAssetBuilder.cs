@@ -13,7 +13,8 @@ public sealed class SceneSkeletalAssetBuilder
 
     public SceneSkeletalAsset BuildExport(string packagePath, int exportIndex)
     {
-        var key = $"{Path.GetFullPath(packagePath)}#{exportIndex}";
+        var fullPath = Path.GetFullPath(packagePath);
+        var key = $"{fullPath}#{exportIndex}";
         lock (_sync)
         {
             if (_cache.TryGetValue(key, out var cached))
@@ -22,7 +23,7 @@ public sealed class SceneSkeletalAssetBuilder
             }
         }
 
-        var built = BuildAsset(packagePath, exportIndex);
+        var built = BuildAsset(UkxFileReader.Read(fullPath), fullPath, exportIndex);
         lock (_sync)
         {
             _cache[key] = built;
@@ -33,22 +34,43 @@ public sealed class SceneSkeletalAssetBuilder
 
     public SceneSkeletalAsset BuildNamed(string packagePath, string meshName)
     {
-        var ukx = UkxFileReader.Read(packagePath);
-        var exportIndex = ukx.ExportObjects
-            .FirstOrDefault(x => x.Object is UkxSkeletalMeshObject mesh && mesh.ObjectName.Is(meshName))
-            ?.Export.Index
-            ?? throw new InvalidOperationException($"Skeletal mesh '{meshName}' was not found in '{packagePath}'.");
+        var fullPath = Path.GetFullPath(packagePath);
+        var ukx = UkxFileReader.Read(fullPath);
+        var mesh = ukx.ExportObjects
+            .Select(x => (Export: x.Export, Mesh: x.Object as UkxSkeletalMeshObject))
+            .FirstOrDefault(x => x.Mesh is not null && x.Mesh.ObjectName.Is(meshName));
+        if (mesh.Mesh is null)
+        {
+            throw new InvalidOperationException($"Skeletal mesh '{meshName}' was not found in '{fullPath}'.");
+        }
 
-        return BuildExport(packagePath, exportIndex);
+        var key = $"{fullPath}#{mesh.Export.Index}";
+        lock (_sync)
+        {
+            if (_cache.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+        }
+
+        var built = BuildAsset(ukx, fullPath, mesh.Export.Index, mesh.Mesh);
+        lock (_sync)
+        {
+            _cache[key] = built;
+        }
+
+        return built;
     }
 
-    private static SceneSkeletalAsset BuildAsset(string packagePath, int exportIndex)
+    private static SceneSkeletalAsset BuildAsset(UkxFile.UkxFile ukx, string packagePath, int exportIndex, UkxSkeletalMeshObject? mesh = null)
     {
-        var ukx = UkxFileReader.Read(packagePath);
-        var mesh = ukx.ExportObjects
+        mesh ??= ukx.ExportObjects
             .FirstOrDefault(x => x.Export.Index == exportIndex)
-            ?.Object as UkxSkeletalMeshObject
-            ?? throw new InvalidOperationException($"Export {exportIndex} in '{packagePath}' is not a skeletal mesh.");
+            ?.Object as UkxSkeletalMeshObject;
+        if (mesh is null)
+        {
+            throw new InvalidOperationException($"Export {exportIndex} in '{packagePath}' is not a skeletal mesh.");
+        }
 
         if (mesh.AnimationReference is null)
         {
