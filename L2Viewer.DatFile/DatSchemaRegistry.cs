@@ -22,6 +22,7 @@ public static class DatSchemaRegistry
             ["eula-e.dat"] = new EulaDatReader(),
             ["gametip-e.dat"] = new GameTipDatReader(),
             ["hairaccessorylocgrp.dat"] = new HairAccessoryLocGrpDatReader(),
+            ["hairgrp.dat"] = new HairGrpDatReader(),
             ["hennagrp-e.dat"] = new HennaGrpDatReader(),
             ["itemname-e.dat"] = new ItemNameDatReader(),
             ["instantzonedata-e.dat"] = new InstantZoneDataDatReader(),

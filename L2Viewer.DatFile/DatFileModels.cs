@@ -322,6 +322,14 @@ public sealed record HairAccessoryLocGrpDatEntry(
     IReadOnlyList<float[]> FloatTriples,
     IReadOnlyList<int[]> IntTriples);
 
+public sealed record HairGrpDatDocument(
+    string Path,
+    IReadOnlyList<HairGrpDatEntry> Entries) : DatDocument(Path);
+
+public sealed record HairGrpDatEntry(
+    int EntryIndex,
+    IReadOnlyList<int> Values);
+
 public sealed record HennaGrpDatDocument(
     string Path,
     IReadOnlyList<HennaGrpDatEntry> Entries) : DatDocument(Path);

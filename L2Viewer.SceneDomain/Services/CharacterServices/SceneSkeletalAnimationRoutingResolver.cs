@@ -132,7 +132,8 @@ internal static class SceneSkeletalAnimationRoutingResolver
                     x => x.OrderBy(y => y.Tag).ToArray(),
                     StringComparer.OrdinalIgnoreCase),
             NpcNamesById = DatFileReader.ReadDocument<NpcNameDatDocument>(npcNamePath).Entries
-                .ToDictionary(x => (int)x.Id),
+                .GroupBy(x => (int)x.Id)
+                .ToDictionary(x => x.Key, x => x.First()),
             MobSkillAnimationsByNpcId = DatFileReader.ReadDocument<MobSkillAnimGrpDatDocument>(mobSkillAnimPath).Entries
                 .GroupBy(x => x.NpcId)
                 .ToDictionary(x => x.Key, x => x.OrderBy(y => y.SkillId).ToArray())

@@ -52,7 +52,7 @@
                     <TextBox x:Name="ClientRootTextBox"
                              Width="320"
                              Padding="6,3"
-                             Text="C:\Users\User\Downloads\Lineage2_Interlude_windows10\Interlude" />
+                             Text="C:\Users\User\Downloads\la2 interlude\la2 interlude" />
                 </StackPanel>
             </DockPanel>
         </Border>

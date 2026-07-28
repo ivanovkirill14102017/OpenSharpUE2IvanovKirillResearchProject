@@ -10,7 +10,7 @@ namespace L2Viewer.BspDiagnostics.Wpf;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
-    private const string DefaultClientRoot = @"C:\Users\User\Downloads\Lineage2_Interlude_windows10\Interlude";
+    private const string DefaultClientRoot = @"C:\Users\User\Downloads\la2 interlude\la2 interlude";
     private const string DefaultMapRelativePath = @"Maps\20_20.unr";
     private const uint PF_Invisible = 0x00000001;
     private const uint PF_Portal = 0x04000000;

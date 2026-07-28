@@ -47,12 +47,10 @@ public sealed class SceneCharacterAppearanceBuilder
             BuildBodyPart(armorGrp, familyBinding, SceneCharacterPaperdollSlot.Feet, request.BootsItemId, charGrpEntry.Boots.Meshes, charGrpEntry.Boots.Textures)
         };
 
-        var skeletonPart = parts.FirstOrDefault(x => x.MeshResources.Length > 0 && x.Slot is SceneCharacterPaperdollSlot.Chest or SceneCharacterPaperdollSlot.Legs)
-            ?? parts.FirstOrDefault(x => x.MeshResources.Length > 0)
-            ?? throw new InvalidOperationException($"Visual family '{visualFamily}' has no skeletal mesh resources.");
-        var skeletonMesh = skeletonPart.MeshResources[0];
-        var skeletonLocation = ResolveSkeletonLocation(clientRoot, packageIndex, skeletonMesh);
-        var skeleton = ResolveSkeleton(clientRoot, packageIndex, skeletonMesh);
+        var skeletonCandidate = ResolveSkeletonCandidate(clientRoot, packageIndex, visualFamily, parts);
+        var skeletonMesh = skeletonCandidate.Mesh;
+        var skeletonLocation = skeletonCandidate.Location;
+        var skeleton = skeletonCandidate.Skeleton;
 
         return new SceneCharacterAppearanceData
         {
@@ -223,9 +221,48 @@ public sealed class SceneCharacterAppearanceBuilder
         {
             throw new InvalidOperationException($"Skeletal mesh '{skeletonMesh.ObjectName}' in '{packagePath}' has no reference skeleton.");
         }
+        if (mesh.AnimationReference is null)
+        {
+            throw new InvalidOperationException($"Skeletal mesh '{skeletonMesh.ObjectName}' in '{packagePath}' has no animation reference.");
+        }
 
         return new ResolvedSkeleton(mesh.ObjectName, mesh.RefSkeleton.Length);
     }
 
+    private static ResolvedSkeletonCandidate ResolveSkeletonCandidate(
+        string clientRoot,
+        IReadOnlyDictionary<string, string> packageIndex,
+        SceneCharacterVisualFamily visualFamily,
+        IEnumerable<SceneCharacterResolvedPartData> parts)
+    {
+        var preferredMeshes = parts
+            .Where(x => x.MeshResources.Length > 0 && x.Slot is SceneCharacterPaperdollSlot.Chest or SceneCharacterPaperdollSlot.Legs)
+            .SelectMany(x => x.MeshResources)
+            .Concat(parts.Where(x => x.MeshResources.Length > 0).SelectMany(x => x.MeshResources))
+            .GroupBy(x => x.Reference, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First())
+            .ToArray();
+
+        foreach (var mesh in preferredMeshes)
+        {
+            try
+            {
+                var location = ResolveSkeletonLocation(clientRoot, packageIndex, mesh);
+                var skeleton = ResolveSkeleton(clientRoot, packageIndex, mesh);
+                return new ResolvedSkeletonCandidate(mesh, location, skeleton);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        throw new InvalidOperationException($"Visual family '{visualFamily}' has no skeletal mesh resources with animation references.");
+    }
+
     private readonly record struct ResolvedSkeleton(string Name, int BoneCount);
+
+    private readonly record struct ResolvedSkeletonCandidate(
+        SceneResourceReference Mesh,
+        SceneResourceLocation Location,
+        ResolvedSkeleton Skeleton);
 }
