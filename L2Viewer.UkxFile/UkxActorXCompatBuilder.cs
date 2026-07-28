@@ -96,10 +96,10 @@ public static class UkxActorXCompatBuilder
 
     private static BlenderCompatAnimationSet BuildAnimationSet(UkxSkeletalMeshObject mesh, UkxMeshAnimationObject animation)
     {
-        var compatBones = mesh.RefSkeleton
+        var compatBones = animation.RefBones
             .Select((x, i) =>
             {
-                var parentIndex = x.ParentIndex >= 0 && x.ParentIndex < mesh.RefSkeleton.Length && x.ParentIndex != i
+                var parentIndex = x.ParentIndex >= 0 && x.ParentIndex < animation.RefBones.Length && x.ParentIndex != i
                     ? x.ParentIndex
                     : -1;
                 return new BlenderCompatAnimationBone(x.Name, parentIndex);
@@ -150,7 +150,7 @@ public static class UkxActorXCompatBuilder
         {
             var localPositions = mesh.RefSkeleton.Select(x => x.JointPosition.Position).ToArray();
             var localRotations = mesh.RefSkeleton.Select(x => NormalizeSafe(x.JointPosition.Orientation)).ToArray();
-            ApplyMotion(sequence, move, frameIndex, localRotations, localPositions);
+            ApplyMotion(sequence, move, frameIndex, localRotations, localPositions, animationBoneToSkeleton);
 
             for (var animationBoneIndex = 0; animationBoneIndex < compatBones.Length; animationBoneIndex++)
             {
@@ -436,12 +436,24 @@ public static class UkxActorXCompatBuilder
         return result.ToArray();
     }
 
-    private static void ApplyMotion(UkxMeshAnimSequence sequence, UkxMotionChunk move, int frameIndex, Quaternion[] rotations, Vector3[] positions)
+    private static void ApplyMotion(
+        UkxMeshAnimSequence sequence,
+        UkxMotionChunk move,
+        int frameIndex,
+        Quaternion[] rotations,
+        Vector3[] positions,
+        int[] animationBoneToSkeleton)
     {
         var trackCount = Math.Min(move.BoneIndices.Length, move.AnimTracks.Length);
         for (var i = 0; i < trackCount; i++)
         {
-            var boneIndex = move.BoneIndices[i];
+            var animationBoneIndex = move.BoneIndices[i];
+            if ((uint)animationBoneIndex >= animationBoneToSkeleton.Length)
+            {
+                continue;
+            }
+
+            var boneIndex = animationBoneToSkeleton[animationBoneIndex];
             if ((uint)boneIndex >= rotations.Length)
             {
                 continue;
