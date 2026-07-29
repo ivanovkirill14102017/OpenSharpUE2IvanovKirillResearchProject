@@ -6,7 +6,6 @@
 
 Поддерживаемые типы файлов: `.unr`, `.ukx`, `.usx`, `.utx`.
 
-Отдельная благодарность авторам Blender-аддона для импорта PSK/PSA: `Darknet`, `flufy3d`, `camg188`, `befzz`, `floxay`. Без их работы у меня бы не получилось довести анимации до корректного состояния.
 А так же спасибо авторам `open-l2encdec`, `L2FileEdit`, `l2asm-disasm`.
 
 Как использовать:
@@ -24,9 +23,8 @@ This project is a portfolio piece and an open research project focused on Unreal
 
 Supported file types: `.unr`, `.ukx`, `.usx`, `.utx`.
 
-Special thanks to the authors of the Blender add-on for importing PSK/PSA files: `Darknet`, `flufy3d`, `camg188`, `befzz`, `floxay`. Without their work, I would not have been able to bring the animations to a correct state.
 Also Thanks the authors of `open-l2encdec`, `L2FileEdit`, `l2asm-disasm`.
 
 How to use:
 
-Build the solution, specify the path to a local UE2 Lineage client, and run the viewer to inspect packages, maps, and scene objects.
+Build the solution, specify the path to a local UE2 Lineage 2 interlude client, and run the viewer to inspect packages, maps, and scene objects.
