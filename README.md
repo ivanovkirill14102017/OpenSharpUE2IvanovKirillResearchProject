@@ -9,7 +9,11 @@
 А так же спасибо авторам `open-l2encdec`, `L2FileEdit`, `l2asm-disasm`.
 
 Как использовать:
-собрать solution, укажите путь к локальному UE2-клиенту Lineage и запускать viewer для проверки пакетов, карт и сценовых объектов.
+собрать solution, укажите путь к локальному UE2-клиенту Lineage 2 interlude и запускать viewer для проверки пакетов, карт и сценовых объектов.
+
+link to client+db: https://drive.google.com/file/d/1y9I__aAo2vVtHR2iBtu13iXeHMx3JxYt/view
+link to db only: https://drive.google.com/file/d/1eQESnMK5L-lrzg682ERN9oy2pHEL7Qi_/view?usp=drive_link
+link to folder: https://drive.google.com/drive/folders/1IPCLzqa4TKrrIRlhacEvv7lUlEXoQDNt
 
 English:
 
