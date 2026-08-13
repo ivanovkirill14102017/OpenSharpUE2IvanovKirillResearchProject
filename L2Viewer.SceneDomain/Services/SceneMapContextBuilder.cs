@@ -23,6 +23,11 @@ public sealed class SceneMapContextBuilder
         return BuildCore(unr, dbRootPath: null, clientRootPath: null, quadrant: null);
     }
 
+    public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr, string clientRootPath)
+    {
+        return BuildCore(unr, dbRootPath: null, clientRootPath, quadrant: null);
+    }
+
     public SceneMapContextData Build(L2Viewer.UnrFile.UnrFile unr, string dbRootPath, string clientRootPath, string quadrant)
     {
         return BuildCore(unr, dbRootPath, clientRootPath, quadrant);
@@ -31,11 +36,13 @@ public sealed class SceneMapContextBuilder
     private SceneMapContextData BuildCore(L2Viewer.UnrFile.UnrFile unr, string? dbRootPath, string? clientRootPath, string? quadrant)
     {
         var lightingBuilder = new SceneLightingBuilder();
+        var skyBuilder = new SceneSkyEnvironmentBuilder();
         var fogBuilder = new SceneFogBuilder();
         var creatureBuilder = new SceneCreatureMapBuilder();
         var zones = fogBuilder.BuildFogZones(unr);
         var suns = lightingBuilder.BuildSuns(unr);
         var moons = lightingBuilder.BuildMoons(unr);
+        var sky = skyBuilder.Build(unr);
         var levelInfo = unr.ExportObjects
             .Select(x => x.Object)
             .OfType<UnrLevelInfoObject>()
@@ -115,6 +122,7 @@ public sealed class SceneMapContextBuilder
             PrimarySunEulerDegrees = primarySun?.WorldRotationEulerDegrees ?? default,
             HasMoonRotation = primaryMoon?.WorldRotationEulerDegrees.HasValue == true,
             PrimaryMoonEulerDegrees = primaryMoon?.WorldRotationEulerDegrees ?? default,
+            Sky = sky,
             Creatures = creatures
         };
     }

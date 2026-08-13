@@ -150,13 +150,14 @@ internal sealed class ScenePreviewPreparationService
     public PreparedMapSceneInfo BuildMapSceneInfo(L2Viewer.UnrFile.UnrFile unr)
     {
         var lightingBuilder = new SceneLightingBuilder();
+        var skyBuilder = new SceneSkyEnvironmentBuilder();
         var fogBuilder = new SceneFogBuilder();
         var particleBuilder = new SceneParticleBuilder();
         return new PreparedMapSceneInfo(
             lightingBuilder.BuildLights(unr),
             lightingBuilder.BuildSuns(unr),
             lightingBuilder.BuildMoons(unr),
-            lightingBuilder.BuildSkyZones(unr),
+            skyBuilder.BuildSkyZones(unr),
             fogBuilder.BuildFogZones(unr),
             particleBuilder.BuildEmitters(unr),
             unr.ExportObjects.Select(x => x.Object).OfType<UnrActorBaseObject>().Count());

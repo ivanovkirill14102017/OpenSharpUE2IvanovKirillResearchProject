@@ -80,10 +80,51 @@ public sealed class SceneSkyZoneData
     public required int ExportIndex { get; init; }
     public required string StableName { get; init; }
     public required string Name { get; init; }
+    public required string ClassName { get; init; }
+    public string? Tag { get; init; }
     public Vector3? WorldLocation { get; init; }
+    public Vector3? WorldRotationUnrealRaw { get; init; }
+    public Vector3? WorldRotationEulerDegrees { get; init; }
+    public string? StaticMeshReference { get; init; }
+    public string? MeshReference { get; init; }
+    public string? TextureReference { get; init; }
     public float? TexUPanSpeed { get; init; }
     public float? TexVPanSpeed { get; init; }
     public string[] LensFlareReferences { get; init; } = [];
     public float[] LensFlareOffset { get; init; } = [];
     public float[] LensFlareScale { get; init; } = [];
+}
+
+public sealed class SceneSkyEnvironmentData
+{
+    public required SceneSkyZoneData[] SkyZones { get; init; }
+    public required SceneSunData[] Suns { get; init; }
+    public required SceneMoonData[] Moons { get; init; }
+    public required SceneSkySourceReferenceData[] SourceReferences { get; init; }
+    public required SceneSkySurfaceMaterialData[] SurfaceMaterials { get; init; }
+}
+
+public sealed class SceneSkySourceReferenceData
+{
+    public required string Role { get; init; }
+    public required string Reference { get; init; }
+    public required string PackageName { get; init; }
+    public required string ObjectName { get; init; }
+    public required string ClassName { get; init; }
+    public string? PackagePath { get; init; }
+    public string? ClientRelativePath { get; init; }
+    public string? Uri { get; init; }
+}
+
+public sealed class SceneSkySurfaceMaterialData
+{
+    public required int ModelExportIndex { get; init; }
+    public required string ModelName { get; init; }
+    public required string MaterialReference { get; init; }
+    public required uint PolyFlags { get; init; }
+    public required string[] PolyFlagNames { get; init; }
+    public required int SurfaceCount { get; init; }
+    public required bool Environment { get; init; }
+    public required bool FakeBackdrop { get; init; }
+    public required bool Unlit { get; init; }
 }

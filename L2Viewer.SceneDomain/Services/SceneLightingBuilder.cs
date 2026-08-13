@@ -66,7 +66,7 @@ public sealed class SceneLightingBuilder
                     DynamicActorFilterState = x.DynamicActorFilterState,
                     LightChanged = x.LightChanged,
                     SwayRotationOrig = x.SwayRotationOrig,
-                    SkinReferences = x.Skins.Select(ToReferenceText).Where(x => x is not null).Cast<string>().ToArray()
+                    SkinReferences = x.Skins.Select(reference => BuildMapReference(unr, reference)).Where(x => x is not null).Cast<string>().ToArray()
                 };
             }));
 
@@ -123,43 +123,15 @@ public sealed class SceneLightingBuilder
                     SunAffect = x.SunAffect,
                     DynamicActorFilterState = x.DynamicActorFilterState,
                     LightChanged = x.LightChanged,
-                    SkinReferences = x.Skins.Select(ToReferenceText).Where(x => x is not null).Cast<string>().ToArray()
+                    SkinReferences = x.Skins.Select(reference => BuildMapReference(unr, reference)).Where(x => x is not null).Cast<string>().ToArray()
                 };
             })
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    public SceneSkyZoneData[] BuildSkyZones(L2Viewer.UnrFile.UnrFile unr)
+    private static string? BuildMapReference(L2Viewer.UnrFile.UnrFile unr, UnrFileObjectReference? reference)
     {
-        return unr.ExportObjects
-            .Select(x => x.Object)
-            .OfType<UnrSkyZoneInfoObject>()
-            .Select(x => new SceneSkyZoneData
-            {
-                ExportIndex = x.ExportIndex,
-                StableName = SceneStableNameUtility.BuildActorStableName(unr, x),
-                Name = x.ObjectName,
-                WorldLocation = x.Location,
-                TexUPanSpeed = x.TexUPanSpeed,
-                TexVPanSpeed = x.TexVPanSpeed,
-                LensFlareReferences = x.LensFlare.Select(ToReferenceText).Where(x => x is not null).Cast<string>().ToArray(),
-                LensFlareOffset = x.LensFlareOffset,
-                LensFlareScale = x.LensFlareScale
-            })
-            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
-
-    private static string? ToReferenceText(UnrFileObjectReference? reference)
-    {
-        if (reference is null)
-        {
-            return null;
-        }
-
-        return reference.PackageName is null
-            ? reference.ObjectName
-            : $"{reference.PackageName}.{reference.ObjectName}";
+        return reference is null ? null : SceneReferenceUtilities.BuildReference(unr.FilePath, reference);
     }
 }

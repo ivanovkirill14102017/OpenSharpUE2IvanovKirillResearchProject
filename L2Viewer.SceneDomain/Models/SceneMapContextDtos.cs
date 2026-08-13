@@ -17,6 +17,7 @@ public sealed class SceneMapContextData
     public required Vector3 PrimarySunEulerDegrees { get; init; }
     public required bool HasMoonRotation { get; init; }
     public required Vector3 PrimaryMoonEulerDegrees { get; init; }
+    public required SceneSkyEnvironmentData Sky { get; init; }
     public required SceneCreatureSpawnData[] Creatures { get; init; }
 }
 
