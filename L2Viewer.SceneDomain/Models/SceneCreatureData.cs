@@ -12,6 +12,8 @@ public sealed class SceneCreatureSpawnData
     public required string SpawnLocationKey { get; init; }
     public required string DisplayName { get; init; }
     public required string DbClassName { get; init; }
+    public required int RightHandItemId { get; init; }
+    public required int LeftHandItemId { get; init; }
     public required SceneResourceLocation ActorClassResource { get; init; }
     public required SceneResourceLocation MeshResource { get; init; }
     public required SceneResourceLocation[] TextureResources { get; init; }

@@ -75,6 +75,8 @@ public sealed class SceneCreatureMapBuilder
                 SpawnLocationKey = spawn.location,
                 DisplayName = displayName,
                 DbClassName = npc.@class,
+                RightHandItemId = DecimalToInt32(npc.rhand),
+                LeftHandItemId = DecimalToInt32(npc.lhand),
                 ActorClassResource = actorClass,
                 MeshResource = mesh,
                 TextureResources = textures,
@@ -97,6 +99,21 @@ public sealed class SceneCreatureMapBuilder
     private static string BuildVisualKey(string actorClass, string mesh, IEnumerable<string> textures)
     {
         return string.Join("|", new[] { actorClass, mesh }.Concat(textures.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)));
+    }
+
+    private static int DecimalToInt32(decimal value)
+    {
+        if (value <= 0)
+        {
+            return 0;
+        }
+
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return decimal.ToInt32(decimal.Truncate(value));
     }
 
     private static TerrainImportData? ResolvePrimaryTerrain(string clientRootPath, UnrFile.UnrFile unr)
