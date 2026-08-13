@@ -70,7 +70,11 @@ internal sealed class SceneSpawnVisualDataset
         var systemRoot = Path.Combine(normalizedClientRoot, "system");
         EnsureSystemDataExists(systemRoot, normalizedClientRoot);
         var allSpawns = TableJsonMapper.Read<SpawnlistRow>(Path.Combine(normalizedDbRoot, "spawnlist.json"));
-        var filteredSpawns = FilterSpawns(allSpawns, quadrant, worldBoundsMin, worldBoundsMax);
+        var filteredSpawns = FilterSpawns(allSpawns, quadrant, worldBoundsMin, worldBoundsMax)
+            .Concat(LoadSupplementalVisualSpawns(normalizedDbRoot, worldBoundsMin, worldBoundsMax))
+            .OrderBy(x => x.location, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.id)
+            .ToArray();
         var npcById = TableJsonMapper.Read<NpcRow>(Path.Combine(normalizedDbRoot, "npc.json"))
             .ToDictionary(x => DecimalToInt32(x.id));
         var npcNameById = DatFileReader.ReadDocument<NpcNameDatDocument>(Path.Combine(systemRoot, "npcname-e.dat")).Entries
@@ -120,6 +124,100 @@ internal sealed class SceneSpawnVisualDataset
         }
 
         return Array.Empty<SpawnlistRow>();
+    }
+
+    private static SpawnlistRow[] LoadSupplementalVisualSpawns(
+        string normalizedDbRoot,
+        Vector3? worldBoundsMin,
+        Vector3? worldBoundsMax)
+    {
+        if (!worldBoundsMin.HasValue || !worldBoundsMax.HasValue)
+        {
+            return Array.Empty<SpawnlistRow>();
+        }
+
+        var results = new List<SpawnlistRow>();
+        results.AddRange(LoadRandomSpawnRows(normalizedDbRoot));
+        results.AddRange(LoadRaidBossSpawnRows(normalizedDbRoot));
+
+        return results
+            .Where(x => IsInsideWorldBounds(x, worldBoundsMin.Value, worldBoundsMax.Value))
+            .OrderBy(x => x.location, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.id)
+            .ToArray();
+    }
+
+    private static IEnumerable<SpawnlistRow> LoadRandomSpawnRows(string normalizedDbRoot)
+    {
+        var randomSpawnPath = Path.Combine(normalizedDbRoot, "random_spawn.json");
+        var randomSpawnLocPath = Path.Combine(normalizedDbRoot, "random_spawn_loc.json");
+        if (!File.Exists(randomSpawnPath) || !File.Exists(randomSpawnLocPath))
+        {
+            return Array.Empty<SpawnlistRow>();
+        }
+
+        var locationsByGroupId = TableJsonMapper.Read<RandomSpawnLocationRow>(randomSpawnLocPath)
+            .GroupBy(x => x.groupId)
+            .ToDictionary(x => x.Key, x => x.ToArray());
+        var rows = new List<SpawnlistRow>();
+        foreach (var spawn in TableJsonMapper.Read<RandomSpawnRow>(randomSpawnPath))
+        {
+            if (!locationsByGroupId.TryGetValue(spawn.groupId, out var locations) || locations.Length == 0)
+            {
+                continue;
+            }
+
+            for (var index = 0; index < locations.Length; index++)
+            {
+                var location = locations[index];
+                rows.Add(new SpawnlistRow
+                {
+                    id = BuildRandomSpawnSyntheticId(spawn.groupId, index),
+                    location = $"random_spawn_{spawn.groupId:D6}",
+                    count = Math.Max(1, spawn.count),
+                    npc_templateid = spawn.npcId,
+                    locx = location.x,
+                    locy = location.y,
+                    locz = location.z,
+                    randomx = 0,
+                    randomy = 0,
+                    heading = NormalizeHeading(location.heading),
+                    respawn_delay = ClampToInt32(spawn.respawnDelay),
+                    loc_id = 0,
+                    periodOfDay = 0
+                });
+            }
+        }
+
+        return rows;
+    }
+
+    private static IEnumerable<SpawnlistRow> LoadRaidBossSpawnRows(string normalizedDbRoot)
+    {
+        var raidBossSpawnPath = Path.Combine(normalizedDbRoot, "raidboss_spawnlist.json");
+        if (!File.Exists(raidBossSpawnPath))
+        {
+            return Array.Empty<SpawnlistRow>();
+        }
+
+        return TableJsonMapper.Read<RaidBossSpawnlistRow>(raidBossSpawnPath)
+            .Select(x => new SpawnlistRow
+            {
+                id = BuildRaidBossSyntheticId(x.boss_id),
+                location = "raidboss_spawnlist",
+                count = Math.Max(1, x.amount),
+                npc_templateid = x.boss_id,
+                locx = x.loc_x,
+                locy = x.loc_y,
+                locz = x.loc_z,
+                randomx = 0,
+                randomy = 0,
+                heading = NormalizeHeading(x.heading),
+                respawn_delay = x.respawn_min_delay,
+                loc_id = 0,
+                periodOfDay = 0
+            })
+            .ToArray();
     }
 
     public NpcRow GetNpc(int npcId, int spawnId)
@@ -264,6 +362,36 @@ internal sealed class SceneSpawnVisualDataset
                spawn.locy <= maxY;
     }
 
+    private static int BuildRandomSpawnSyntheticId(int groupId, int locationIndex)
+    {
+        return 900_000_000 + groupId * 1_000 + locationIndex;
+    }
+
+    private static int BuildRaidBossSyntheticId(int bossId)
+    {
+        return 910_000_000 + bossId;
+    }
+
+    private static int NormalizeHeading(int heading)
+    {
+        return heading < 0 ? 0 : heading;
+    }
+
+    private static int ClampToInt32(long value)
+    {
+        if (value > int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        if (value < int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        return (int)value;
+    }
+
     private static string NormalizeClientRoot(string clientRootPath)
     {
         if (File.Exists(clientRootPath))
@@ -286,5 +414,41 @@ internal sealed class SceneSpawnVisualDataset
 
         throw new DirectoryNotFoundException(
             $"Client root '{clientRootPath}' does not contain required system data. Expected '{npcGrpPath}' and '{npcNamePath}'.");
+    }
+
+    private sealed class RandomSpawnRow
+    {
+        public int groupId { get; set; }
+        public int npcId { get; set; }
+        public int count { get; set; }
+        public long initialDelay { get; set; }
+        public long respawnDelay { get; set; }
+        public long despawnDelay { get; set; }
+        public bool broadcastSpawn { get; set; }
+        public bool randomSpawn { get; set; }
+    }
+
+    private sealed class RandomSpawnLocationRow
+    {
+        public int groupId { get; set; }
+        public int x { get; set; }
+        public int y { get; set; }
+        public int z { get; set; }
+        public int heading { get; set; }
+    }
+
+    private sealed class RaidBossSpawnlistRow
+    {
+        public int boss_id { get; set; }
+        public int amount { get; set; }
+        public int loc_x { get; set; }
+        public int loc_y { get; set; }
+        public int loc_z { get; set; }
+        public int heading { get; set; }
+        public int respawn_min_delay { get; set; }
+        public int respawn_max_delay { get; set; }
+        public long respawn_time { get; set; }
+        public decimal currentHp { get; set; }
+        public decimal currentMp { get; set; }
     }
 }
