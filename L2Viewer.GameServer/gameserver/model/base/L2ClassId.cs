@@ -1,0 +1,129 @@
+namespace L2Viewer.GameServer.gameserver.model.@base;
+
+public enum L2ClassId
+{
+    [ClassIdInfo(L2Race.Human, -1, false)]
+    HumanFighter = 0,
+    [ClassIdInfo(L2Race.Human, 0, false)]
+    Warrior = 1,
+    [ClassIdInfo(L2Race.Human, 1, false)]
+    Gladiator = 2,
+    [ClassIdInfo(L2Race.Human, 1, false)]
+    Warlord = 3,
+    [ClassIdInfo(L2Race.Human, 0, false)]
+    HumanKnight = 4,
+    [ClassIdInfo(L2Race.Human, 4, false)]
+    Paladin = 5,
+    [ClassIdInfo(L2Race.Human, 4, false)]
+    DarkAvenger = 6,
+    [ClassIdInfo(L2Race.Human, 0, false)]
+    Rogue = 7,
+    [ClassIdInfo(L2Race.Human, 7, false)]
+    TreasureHunter = 8,
+    [ClassIdInfo(L2Race.Human, 7, false)]
+    Hawkeye = 9,
+
+    [ClassIdInfo(L2Race.Human, -1, true)]
+    HumanMage = 10,
+    [ClassIdInfo(L2Race.Human, 10, true)]
+    HumanWizard = 11,
+    [ClassIdInfo(L2Race.Human, 11, true)]
+    Sorcerer = 12,
+    [ClassIdInfo(L2Race.Human, 11, true)]
+    Necromancer = 13,
+    [ClassIdInfo(L2Race.Human, 11, true)]
+    Warlock = 14,
+    [ClassIdInfo(L2Race.Human, 10, true)]
+    Cleric = 15,
+    [ClassIdInfo(L2Race.Human, 15, true)]
+    Bishop = 16,
+    [ClassIdInfo(L2Race.Human, 15, true)]
+    Prophet = 17,
+
+    [ClassIdInfo(L2Race.Elf, -1, false)]
+    ElfFighter = 18,
+    [ClassIdInfo(L2Race.Elf, 18, false)]
+    ElvenKnight = 19,
+    [ClassIdInfo(L2Race.Elf, 19, false)]
+    TempleKnight = 20,
+    [ClassIdInfo(L2Race.Elf, 19, false)]
+    Swordsinger = 21,
+    [ClassIdInfo(L2Race.Elf, 18, false)]
+    ElvenScout = 22,
+    [ClassIdInfo(L2Race.Elf, 22, false)]
+    PlainsWalker = 23,
+    [ClassIdInfo(L2Race.Elf, 22, false)]
+    SilverRanger = 24,
+
+    [ClassIdInfo(L2Race.Elf, -1, true)]
+    ElfMage = 25,
+    [ClassIdInfo(L2Race.Elf, 25, true)]
+    ElvenWizard = 26,
+    [ClassIdInfo(L2Race.Elf, 26, true)]
+    Spellsinger = 27,
+    [ClassIdInfo(L2Race.Elf, 26, true)]
+    ElementalSummoner = 28,
+    [ClassIdInfo(L2Race.Elf, 25, true)]
+    Oracle = 29,
+    [ClassIdInfo(L2Race.Elf, 29, true)]
+    Elder = 30,
+
+    [ClassIdInfo(L2Race.DarkElf, -1, false)]
+    DarkElfFighter = 31,
+    [ClassIdInfo(L2Race.DarkElf, 31, false)]
+    PalusKnight = 32,
+    [ClassIdInfo(L2Race.DarkElf, 32, false)]
+    ShillienKnight = 33,
+    [ClassIdInfo(L2Race.DarkElf, 32, false)]
+    Bladedancer = 34,
+    [ClassIdInfo(L2Race.DarkElf, 31, false)]
+    Assassin = 35,
+    [ClassIdInfo(L2Race.DarkElf, 35, false)]
+    AbyssWalker = 36,
+    [ClassIdInfo(L2Race.DarkElf, 35, false)]
+    PhantomRanger = 37,
+
+    [ClassIdInfo(L2Race.DarkElf, -1, true)]
+    DarkElfMage = 38,
+    [ClassIdInfo(L2Race.DarkElf, 38, true)]
+    DarkWizard = 39,
+    [ClassIdInfo(L2Race.DarkElf, 39, true)]
+    Spellhowler = 40,
+    [ClassIdInfo(L2Race.DarkElf, 39, true)]
+    PhantomSummoner = 41,
+    [ClassIdInfo(L2Race.DarkElf, 38, true)]
+    ShillienOracle = 42,
+    [ClassIdInfo(L2Race.DarkElf, 42, true)]
+    ShillienElder = 43,
+
+    [ClassIdInfo(L2Race.Orc, -1, false)]
+    OrcFighter = 44,
+    [ClassIdInfo(L2Race.Orc, 44, false)]
+    OrcRaider = 45,
+    [ClassIdInfo(L2Race.Orc, 45, false)]
+    Destroyer = 46,
+    [ClassIdInfo(L2Race.Orc, 44, false)]
+    OrcMonk = 47,
+    [ClassIdInfo(L2Race.Orc, 47, false)]
+    Tyrant = 48,
+
+    [ClassIdInfo(L2Race.Orc, -1, true)]
+    OrcMage = 49,
+    [ClassIdInfo(L2Race.Orc, 49, true)]
+    OrcShaman = 50,
+    [ClassIdInfo(L2Race.Orc, 50, true)]
+    Overlord = 51,
+    [ClassIdInfo(L2Race.Orc, 50, true)]
+    Warcryer = 52,
+
+    [ClassIdInfo(L2Race.Dwarf, -1, false)]
+    DwarvenFighter = 53,
+    [ClassIdInfo(L2Race.Dwarf, 53, false)]
+    Scavenger = 54,
+    [ClassIdInfo(L2Race.Dwarf, 54, false)]
+    BountyHunter = 55,
+    [ClassIdInfo(L2Race.Dwarf, 53, false)]
+    Artisan = 56,
+    [ClassIdInfo(L2Race.Dwarf, 56, false)]
+    Warsmith = 57
+}

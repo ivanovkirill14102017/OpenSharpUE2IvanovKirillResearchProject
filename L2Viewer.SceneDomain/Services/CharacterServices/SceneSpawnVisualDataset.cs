@@ -75,12 +75,15 @@ internal sealed class SceneSpawnVisualDataset
             .OrderBy(x => x.location, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.id)
             .ToArray();
-        var npcById = TableJsonMapper.Read<NpcRow>(Path.Combine(normalizedDbRoot, "npc.json"))
-            .ToDictionary(x => DecimalToInt32(x.id));
-        var npcNameById = DatFileReader.ReadDocument<NpcNameDatDocument>(Path.Combine(systemRoot, "npcname-e.dat")).Entries
-            .ToDictionary(x => checked((int)x.Id));
-        var npcVisualById = DatFileReader.ReadDocument<NpcGrpDatDocument>(Path.Combine(systemRoot, "npcgrp.dat")).Entries
-            .ToDictionary(x => checked((int)x.Tag));
+        var npcById = BuildFirstByKeyDictionary(
+            TableJsonMapper.Read<NpcRow>(Path.Combine(normalizedDbRoot, "npc.json")),
+            x => DecimalToInt32(x.id));
+        var npcNameById = BuildFirstByKeyDictionary(
+            DatFileReader.ReadDocument<NpcNameDatDocument>(Path.Combine(systemRoot, "npcname-e.dat")).Entries,
+            x => checked((int)x.Id));
+        var npcVisualById = BuildFirstByKeyDictionary(
+            DatFileReader.ReadDocument<NpcGrpDatDocument>(Path.Combine(systemRoot, "npcgrp.dat")).Entries,
+            x => checked((int)x.Tag));
         var resourcePackageIndex = ScenePackageIndexer.BuildResourcePackageIndex(normalizedClientRoot);
 
         return new SceneSpawnVisualDataset(
@@ -375,6 +378,21 @@ internal sealed class SceneSpawnVisualDataset
     private static int NormalizeHeading(int heading)
     {
         return heading < 0 ? 0 : heading;
+    }
+
+    private static Dictionary<int, T> BuildFirstByKeyDictionary<T>(IEnumerable<T> rows, Func<T, int> keySelector)
+    {
+        var result = new Dictionary<int, T>();
+        foreach (var row in rows ?? Array.Empty<T>())
+        {
+            var key = keySelector(row);
+            if (!result.ContainsKey(key))
+            {
+                result[key] = row;
+            }
+        }
+
+        return result;
     }
 
     private static int ClampToInt32(long value)
