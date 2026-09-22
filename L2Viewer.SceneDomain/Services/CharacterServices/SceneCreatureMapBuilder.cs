@@ -5,7 +5,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneCreatureMapBuilder
 {
     public SceneCreatureSpawnData[] Build(string dbRootPath, string clientRootPath, string quadrant)
@@ -37,6 +36,9 @@ public sealed class SceneCreatureMapBuilder
     internal SceneCreatureSpawnData[] Build(SceneSpawnVisualDataset dataset)
     {
         var results = new List<SceneCreatureSpawnData>(dataset.Spawns.Count);
+        var classEffectResolver = new SceneCreatureClassEffectResolver(
+            dataset.ClientRootPath,
+            ScenePackageIndexer.BuildResourcePackageIndex(dataset.ClientRootPath));
         foreach (var spawn in dataset.Spawns)
         {
             var npc = dataset.GetNpc(spawn.npc_templateid, spawn.id);
@@ -80,6 +82,7 @@ public sealed class SceneCreatureMapBuilder
                 ActorClassResource = actorClass,
                 MeshResource = mesh,
                 TextureResources = textures,
+                AttachedEffects = classEffectResolver.Resolve(actorClass),
                 Heading = spawn.heading,
                 SpawnCount = spawn.count,
                 RandomOffsetX = spawn.randomx,

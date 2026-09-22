@@ -33,11 +33,17 @@ public sealed class SceneBspRoomBuilder
 
     public SceneBspScene Build(UnrFile.UnrFile unr)
     {
-        return Convert(BuildDiagnostic(unr));
+        return Convert(BuildDiagnostic(unr, BspBuildMode.World));
     }
 
-    private BspDiagnosticScene BuildDiagnostic(UnrFile.UnrFile unr)
+    public SceneBspScene BuildSky(UnrFile.UnrFile unr)
     {
+        return Convert(BuildDiagnostic(unr, BspBuildMode.Sky));
+    }
+
+    private BspDiagnosticScene BuildDiagnostic(UnrFile.UnrFile unr, BspBuildMode mode)
+    {
+        var skyZoneNumbers = ResolveSkyZoneNumbers(unr);
         var worldModelExports = unr.ExportObjects
             .Select(x => x.Object)
             .OfType<UnrLevelObject>()
@@ -56,13 +62,13 @@ public sealed class SceneBspRoomBuilder
             }
 
             var isWorldModelCandidate = worldModelExports.Contains(model.ExportIndex);
-            if (!BspWorldModelPolicy.ShouldIncludeBspModel(unr.FilePath, model, isWorldModelCandidate))
+            if (!ShouldIncludeModel(unr.FilePath, model, isWorldModelCandidate, mode))
             {
                 continue;
             }
 
             var brushPolys = BspUvResolver.ResolveBrushPolys(unr, model);
-            var built = BuildModel(model, brushPolys, isWorldModelCandidate);
+            var built = BuildModel(model, brushPolys, isWorldModelCandidate, mode, skyZoneNumbers);
             if (built is null)
             {
                 continue;
@@ -91,7 +97,12 @@ public sealed class SceneBspRoomBuilder
         };
     }
 
-    private static BspDiagnosticModel? BuildModel(UnrModelObject model, UnrPolysObject? brushPolys, bool isWorldModel)
+    private static BspDiagnosticModel? BuildModel(
+        UnrModelObject model,
+        UnrPolysObject? brushPolys,
+        bool isWorldModel,
+        BspBuildMode mode,
+        HashSet<byte> skyZoneNumbers)
     {
         var polygonsByRoom = new Dictionary<int, List<RoomPolygonFragment>>();
         var modelMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -108,6 +119,12 @@ public sealed class SceneBspRoomBuilder
             }
 
             if (node.VertexCount < 3)
+            {
+                continue;
+            }
+
+            var surface = model.Surfaces[node.SurfaceIndex];
+            if (!ShouldIncludeNode(node, surface, mode, skyZoneNumbers))
             {
                 continue;
             }
@@ -144,7 +161,6 @@ public sealed class SceneBspRoomBuilder
                 continue;
             }
 
-            var surface = model.Surfaces[node.SurfaceIndex];
             var normal = SafeNormalize(new Vector3(node.Plane.X, node.Plane.Y, node.Plane.Z));
             if (normal.LengthSquared() < 0.000001f)
             {
@@ -497,6 +513,54 @@ public sealed class SceneBspRoomBuilder
         }
 
         return sharedVertexCount >= 2;
+    }
+
+    private static HashSet<byte> ResolveSkyZoneNumbers(UnrFile.UnrFile unr)
+    {
+        return unr.ExportObjects
+            .Select(x => x.Object)
+            .OfType<UnrSkyZoneInfoObject>()
+            .Where(x => x.Region?.ZoneNumber is not null)
+            .Select(x => x.Region!.ZoneNumber!.Value)
+            .ToHashSet();
+    }
+
+    private static bool ShouldIncludeModel(
+        string sourcePath,
+        UnrModelObject model,
+        bool isWorldModelCandidate,
+        BspBuildMode mode)
+    {
+        return mode == BspBuildMode.Sky ||
+               BspWorldModelPolicy.ShouldIncludeBspModel(sourcePath, model, isWorldModelCandidate);
+    }
+
+    private static bool ShouldIncludeNode(
+        UnrModelNode node,
+        UnrModelSurface surface,
+        BspBuildMode mode,
+        HashSet<byte> skyZoneNumbers)
+    {
+        var belongsToSky = TouchesAnyZone(node, skyZoneNumbers);
+        return mode switch
+        {
+            BspBuildMode.World =>
+                !belongsToSky &&
+                !surface.KnownPolyFlags.HasFlag(UnrPolyFlags.FakeBackdrop),
+            BspBuildMode.Sky => belongsToSky,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+        };
+    }
+
+    private static bool TouchesAnyZone(UnrModelNode node, HashSet<byte> zoneNumbers)
+    {
+        return zoneNumbers.Contains(node.Zone0) || zoneNumbers.Contains(node.Zone1);
+    }
+
+    private enum BspBuildMode
+    {
+        World,
+        Sky
     }
 
     private SceneBspScene Convert(BspDiagnosticScene source)

@@ -142,13 +142,15 @@ public sealed class SceneStaticMeshResolver
         var triangleCountsByMaterialId = renderMesh.Triangles
             .GroupBy(x => x.MaterialId)
             .ToDictionary(x => x.Key, x => x.Count());
-        var orderedMaterialIds = triangleCountsByMaterialId.Keys
-            .OrderBy(x => x)
+        var orderedMaterialIds = renderMesh.Triangles
+            .Select(x => x.MaterialId)
+            .Distinct()
             .ToArray();
         var subMeshes = new List<SceneStaticMeshSubMeshDefinition>(orderedMaterialIds.Length);
 
-        foreach (var materialId in orderedMaterialIds)
+        for (var subMeshIndex = 0; subMeshIndex < orderedMaterialIds.Length; subMeshIndex++)
         {
+            var materialId = orderedMaterialIds[subMeshIndex];
             var material = materialId >= 0 && materialId < materials.Count ? materials[materialId] : null;
             var orderedTextureSlots = material is null
                 ? []
@@ -170,6 +172,7 @@ public sealed class SceneStaticMeshResolver
 
             subMeshes.Add(new SceneStaticMeshSubMeshDefinition
             {
+                SubMeshIndex = subMeshIndex,
                 MaterialId = materialId,
                 TriangleCount = triangleCountsByMaterialId[materialId],
                 MaterialReference = material?.RootReference,
@@ -353,3 +356,4 @@ public sealed class SceneStaticMeshResolver
     }
 
 }
+

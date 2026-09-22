@@ -34,10 +34,25 @@ internal static class UnrNMoonObjectReader
         UnrFileObjectReference? physicsVolumeReference = null;
         UnrFileObjectReference? staticMeshReference = null;
         float? radius = null;
+        float? latitude = null;
+        float? longitude = null;
+        float? limitMaxRadius = null;
+        float? moonScale = null;
+        Vector3? position = null;
+        var makeLightmap = false;
+        var moonLight = false;
+        int? envType = null;
+        byte? lightHue = null;
+        byte? lightSaturation = null;
+        float? lightBrightness = null;
         var dynamicActorFilterState = false;
         var lightChanged = false;
         var sunAffect = false;
+        var directional = false;
         var skins = new List<UnrFileObjectReference>();
+        var flames = new List<UnrFileObjectReference>();
+        UnrPointRegion? region = null;
+        UnrTextureModifyInfo? texModifyInfo = null;
         var unknownProperties = new List<UnrFileUnknownProperty>();
 
         void EnsureIndexedCapacity<T>(List<T> values, int index, T filler)
@@ -52,6 +67,12 @@ internal static class UnrNMoonObjectReader
         {
             EnsureIndexedCapacity(skins, index, value);
             skins[index] = value;
+        }
+
+        void SetFlame(int index, UnrFileObjectReference value)
+        {
+            EnsureIndexedCapacity(flames, index, value);
+            flames[index] = value;
         }
 
         void AddUnknownProperty(StreamPropertyTag tag)
@@ -228,6 +249,39 @@ internal static class UnrNMoonObjectReader
                 case UnrNMoonPropertyKind.Radius:
                     radius = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
                     return;
+                case UnrNMoonPropertyKind.Latitude:
+                    latitude = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.Longitude:
+                    longitude = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.LimitMaxRadius:
+                    limitMaxRadius = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.MoonScale:
+                    moonScale = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.Position:
+                    position = reader.ReadVectorProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.bMakeLightmap:
+                    makeLightmap = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.bMoonLight:
+                    moonLight = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.EnvType:
+                    envType = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.LightHue:
+                    lightHue = reader.ReadByteProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.LightSaturation:
+                    lightSaturation = reader.ReadByteProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.LightBrightness:
+                    lightBrightness = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
                 case UnrNMoonPropertyKind.bDynamicActorFilterState:
                     dynamicActorFilterState = ReadStrictBool(tag, className, exportIndex, objectName);
                     return;
@@ -236,6 +290,9 @@ internal static class UnrNMoonObjectReader
                     return;
                 case UnrNMoonPropertyKind.bSunAffect:
                     sunAffect = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNMoonPropertyKind.bDirectional:
+                    directional = ReadStrictBool(tag, className, exportIndex, objectName);
                     return;
                 case UnrNMoonPropertyKind.Skins:
                     if (tag.Type == PackageReader.PropertyTypeArray)
@@ -246,9 +303,20 @@ internal static class UnrNMoonObjectReader
 
                     SetSkin(tag.ArrayIndex, reader.ReadObjectReferenceProperty(package, tag, className, exportIndex, objectName)!);
                     return;
+                case UnrNMoonPropertyKind.Flame:
+                    if (tag.Type == PackageReader.PropertyTypeArray)
+                    {
+                        flames.AddRange(reader.ReadObjectReferenceArrayProperty(package, tag, className, exportIndex, objectName));
+                        return;
+                    }
+
+                    SetFlame(tag.ArrayIndex, reader.ReadObjectReferenceProperty(package, tag, className, exportIndex, objectName)!);
+                    return;
                 case UnrNMoonPropertyKind.Region:
+                    region = UnrStructPropertyReader.ReadPointRegionProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
                 case UnrNMoonPropertyKind.TexModifyInfo:
-                    AddUnknownProperty(tag);
+                    texModifyInfo = UnrStructPropertyReader.ReadTextureModifyInfoProperty(package, reader, tag, className, exportIndex, objectName);
                     return;
             }
         }
@@ -309,10 +377,25 @@ internal static class UnrNMoonObjectReader
             PhysicsVolumeReference = physicsVolumeReference,
             StaticMeshReference = staticMeshReference,
             Radius = radius,
+            Latitude = latitude,
+            Longitude = longitude,
+            LimitMaxRadius = limitMaxRadius,
+            MoonScale = moonScale,
+            Position = position,
+            MakeLightmap = makeLightmap,
+            MoonLight = moonLight,
+            EnvType = envType,
+            Flames = flames.ToArray(),
+            LightHue = lightHue,
+            LightSaturation = lightSaturation,
+            LightBrightness = lightBrightness,
             Skins = skins.ToArray(),
             DynamicActorFilterState = dynamicActorFilterState,
             LightChanged = lightChanged,
             SunAffect = sunAffect,
+            Directional = directional,
+            Region = region,
+            TexModifyInfo = texModifyInfo,
             UnknownProperties = unknownProperties.ToArray()
         };
     }
@@ -351,10 +434,23 @@ internal static class UnrNMoonObjectReader
         PhysicsVolume,
         StaticMesh,
         Radius,
+        Latitude,
+        Longitude,
+        LimitMaxRadius,
+        MoonScale,
+        Position,
+        bMakeLightmap,
+        bMoonLight,
+        EnvType,
+        Flame,
+        LightHue,
+        LightSaturation,
+        LightBrightness,
         Skins,
         bDynamicActorFilterState,
         bLightChanged,
         bSunAffect,
+        bDirectional,
         TexModifyInfo
     }
 }

@@ -1,6 +1,5 @@
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public enum SceneCharacterBaseClass
 {
     HumanFighter = 0,
@@ -14,14 +13,12 @@ public enum SceneCharacterBaseClass
     DwarvenFighter = 53
 }
 
-[ForExternalUse]
 public enum SceneCharacterGender
 {
     Male = 0,
     Female = 1
 }
 
-[ForExternalUse]
 public enum SceneCharacterVisualFamily
 {
     MaleHumanFighter,
@@ -40,7 +37,6 @@ public enum SceneCharacterVisualFamily
     FemaleDwarf
 }
 
-[ForExternalUse]
 public enum SceneCharacterPaperdollSlot
 {
     Under = 0,
@@ -63,7 +59,6 @@ public enum SceneCharacterPaperdollSlot
     DoubleHair = 17
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterAppearanceRequest
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
@@ -77,7 +72,6 @@ public sealed class SceneCharacterAppearanceRequest
     public int? BootsItemId { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterAppearanceData
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }

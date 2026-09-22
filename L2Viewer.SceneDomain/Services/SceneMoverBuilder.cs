@@ -9,7 +9,6 @@ using L2Viewer.UsxFile;
 
 namespace L2Viewer.SceneDomain.Services;
 
-[ForExternalUse]
 public sealed class SceneMoverBuilder
 {
     private readonly string? _clientRoot;

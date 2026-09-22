@@ -18,6 +18,50 @@ public sealed class SceneParticleBuilder
             .ToArray();
     }
 
+    public SceneParticleEmitterData BuildEmitterClass(string packagePath, UnrEmitterClassObject emitterClass)
+    {
+        if (emitterClass is null)
+        {
+            throw new ArgumentNullException(nameof(emitterClass));
+        }
+        var byExportIndex = emitterClass.Layers.ToDictionary(x => x.ExportIndex);
+        var layerReferences = emitterClass.Layers
+            .OrderBy(x => x.ExportIndex)
+            .Select(x => $"{Path.GetFileNameWithoutExtension(packagePath)}.{x.ObjectName}")
+            .ToArray();
+
+        return new SceneParticleEmitterData
+        {
+            StableName = SceneStableNameUtility.BuildSourceObjectStableName(
+                "EmitterClass",
+                packagePath,
+                emitterClass.ObjectName,
+                emitterClass.SuperClassName,
+                emitterClass.ExportIndex),
+            ExportIndex = emitterClass.ExportIndex,
+            Name = emitterClass.ObjectName,
+            DrawScale = 1f,
+            DrawScale3D = Vector3.One,
+            EmitterReferences = layerReferences,
+            Layers = emitterClass.Layers
+                .OfType<UnrSpriteEmitterObject>()
+                .Select(x => ResolveSpriteEmitterLayer(packagePath, CreateExportReference(x), byExportIndex)!)
+                .ToArray(),
+            MeshLayers = emitterClass.Layers
+                .OfType<UnrMeshEmitterObject>()
+                .Select(x => ResolveMeshEmitterLayer(packagePath, CreateExportReference(x), byExportIndex)!)
+                .ToArray(),
+            BeamLayers = emitterClass.Layers
+                .OfType<UnrBeamEmitterObject>()
+                .Select(x => ResolveBeamEmitterLayer(packagePath, CreateExportReference(x), byExportIndex)!)
+                .ToArray(),
+            VertMeshLayers = emitterClass.Layers
+                .OfType<UnrVertMeshEmitterObject>()
+                .Select(x => ResolveVertMeshEmitterLayer(packagePath, CreateExportReference(x), byExportIndex)!)
+                .ToArray()
+        };
+    }
+
     private static SceneParticleEmitterData BuildEmitter(
         UnrFile.UnrFile unr,
         UnrEmitterObject emitter,
@@ -31,22 +75,22 @@ public sealed class SceneParticleBuilder
             .ToArray();
 
         var layers = emitter.Emitters
-            .Select(x => ResolveSpriteEmitterLayer(unr, x, byExportIndex))
+            .Select(x => ResolveSpriteEmitterLayer(unr.FilePath, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneSpriteEmitterLayerData>()
             .ToArray();
         var meshLayers = emitter.Emitters
-            .Select(x => ResolveMeshEmitterLayer(unr, x, byExportIndex))
+            .Select(x => ResolveMeshEmitterLayer(unr.FilePath, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneMeshEmitterLayerData>()
             .ToArray();
         var beamLayers = emitter.Emitters
-            .Select(x => ResolveBeamEmitterLayer(unr, x, byExportIndex))
+            .Select(x => ResolveBeamEmitterLayer(unr.FilePath, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneBeamEmitterLayerData>()
             .ToArray();
         var vertMeshLayers = emitter.Emitters
-            .Select(x => ResolveVertMeshEmitterLayer(unr, x, byExportIndex))
+            .Select(x => ResolveVertMeshEmitterLayer(unr.FilePath, x, byExportIndex))
             .Where(x => x is not null)
             .Cast<SceneVertMeshEmitterLayerData>()
             .ToArray();
@@ -75,7 +119,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneSpriteEmitterLayerData? ResolveSpriteEmitterLayer(
-        UnrFile.UnrFile unr,
+        string sourcePath,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -87,7 +131,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneSpriteEmitterLayerData
             {
-                StableName = SceneStableNameUtility.BuildActorStableName("SpriteEm", unr, identity),
+                StableName = BuildLayerStableName("SpriteEm", sourcePath, sprite, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -110,6 +154,11 @@ public sealed class SceneParticleBuilder
                 UniformSize = sprite.UniformSize,
                 DrawStyle = sprite.DrawStyle,
                 TextureReference = ToReferenceText(sprite.TextureReference),
+                TextureUSubdivisions = sprite.TextureUSubdivisions,
+                TextureVSubdivisions = sprite.TextureVSubdivisions,
+                SubdivisionStart = sprite.SubdivisionStart,
+                SubdivisionEnd = sprite.SubdivisionEnd,
+                UseRandomSubdivision = sprite.UseRandomSubdivision,
                 LifetimeRange = timed.LifetimeRange,
                 StartVelocityRange = sprite.StartVelocityRange,
                 WarmupTicksPerSecond = timed.WarmupTicksPerSecond,
@@ -121,7 +170,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneMeshEmitterLayerData? ResolveMeshEmitterLayer(
-        UnrFile.UnrFile unr,
+        string sourcePath,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -134,11 +183,12 @@ public sealed class SceneParticleBuilder
 
             return new SceneMeshEmitterLayerData
             {
-                StableName = SceneStableNameUtility.BuildActorStableName("MeshEm",unr, identity),
+                StableName = BuildLayerStableName("MeshEm", sourcePath, mesh, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
                 StaticMeshReference = ToReferenceText(mesh.StaticMeshReference),
+                DrawStyle = mesh.DrawStyle,
                 UseMeshBlendMode = mesh.UseMeshBlendMode,
                 RenderTwoSided = mesh.RenderTwoSided,
                 Opacity = timed.Opacity,
@@ -150,6 +200,7 @@ public sealed class SceneParticleBuilder
                 SpinParticles = mesh.SpinParticles,
                 SpinsPerSecondRange = mesh.SpinsPerSecondRange,
                 StartSpinRange = mesh.StartSpinRange,
+                SizeScale = mesh.UseSizeScale ? mesh.SizeScale : [],
                 StartSizeRange = mesh.StartSizeRange,
                 LifetimeRange = timed.LifetimeRange,
                 StartVelocityRange = mesh.StartVelocityRange,
@@ -161,7 +212,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneBeamEmitterLayerData? ResolveBeamEmitterLayer(
-        UnrFile.UnrFile unr,
+        string sourcePath,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -174,7 +225,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneBeamEmitterLayerData
             {
-                StableName = SceneStableNameUtility.BuildActorStableName("BeamEm", unr, identity),
+                StableName = BuildLayerStableName("BeamEm", sourcePath, beam, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -200,7 +251,7 @@ public sealed class SceneParticleBuilder
     }
 
     private static SceneVertMeshEmitterLayerData? ResolveVertMeshEmitterLayer(
-        UnrFile.UnrFile unr,
+        string sourcePath,
         UnrFileObjectReference? reference,
         IReadOnlyDictionary<int, UnrFileObject> byExportIndex)
     {
@@ -213,7 +264,7 @@ public sealed class SceneParticleBuilder
 
             return new SceneVertMeshEmitterLayerData
             {
-                StableName = SceneStableNameUtility.BuildActorStableName("VertMeshEm", unr, identity),
+                StableName = BuildLayerStableName("VertMeshEm", sourcePath, vertMesh, identity),
                 ExportIndex = identity.ExportIndex,
                 Name = identity.Name,
                 UnknownProperties = identity.UnknownProperties,
@@ -309,6 +360,32 @@ public sealed class SceneParticleBuilder
         return reference.PackageName is null
             ? reference.ObjectName
             : $"{reference.PackageName}.{reference.ObjectName}";
+    }
+
+    private static UnrFileObjectReference CreateExportReference(UnrFileObject layer)
+    {
+        return new UnrFileObjectReference
+        {
+            RawReference = layer.ExportIndex + 1,
+            Kind = UnrFileReferenceKind.Export,
+            ClassName = layer.ClassName,
+            ObjectName = layer.ObjectName,
+            ExportIndex = layer.ExportIndex
+        };
+    }
+
+    private static string BuildLayerStableName(
+        string prefix,
+        string sourcePath,
+        UnrFileObject layer,
+        SceneParticleLayerIdentity identity)
+    {
+        return SceneStableNameUtility.BuildSourceObjectStableName(
+            prefix,
+            sourcePath,
+            identity.Name,
+            layer.ClassName,
+            identity.ExportIndex);
     }
 
     public  readonly record struct SceneParticleLayerIdentity(

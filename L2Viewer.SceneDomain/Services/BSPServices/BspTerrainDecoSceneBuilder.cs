@@ -5,7 +5,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.BSPServices;
 
-[ForExternalUse]
 public sealed class BspTerrainDecoSceneBuilder
 {
     private const int MaxSampleResolution = 128;

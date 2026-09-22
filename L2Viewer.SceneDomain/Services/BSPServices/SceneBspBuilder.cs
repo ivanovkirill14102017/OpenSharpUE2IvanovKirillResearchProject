@@ -26,4 +26,14 @@ public sealed class SceneBspBuilder
     {
         return _inner.Build(unr);
     }
+
+    public SceneBspScene LoadSky(string path)
+    {
+        return _inner.BuildSky(UnrFileReader.Read(path));
+    }
+
+    public SceneBspScene BuildSky(UnrFile.UnrFile unr)
+    {
+        return _inner.BuildSky(unr);
+    }
 }

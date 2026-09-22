@@ -3,7 +3,6 @@ using L2Viewer.PackageCore;
 
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public sealed class SceneSkeletalAsset
 {
     public required string PackagePath { get; init; }

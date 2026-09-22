@@ -1,6 +1,5 @@
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public sealed class SceneCharacterAppearanceOptionsData
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
@@ -11,7 +10,6 @@ public sealed class SceneCharacterAppearanceOptionsData
     public required IReadOnlyList<SceneCharacterHairStyleOptionData> HairStyleOptions { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterFaceOptionData
 {
     public required int Id { get; init; }
@@ -19,7 +17,6 @@ public sealed class SceneCharacterFaceOptionData
     public required SceneResourceReference[] TextureResources { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterHairStyleOptionData
 {
     public required int Id { get; init; }
@@ -27,7 +24,6 @@ public sealed class SceneCharacterHairStyleOptionData
     public required IReadOnlyList<SceneCharacterHairColorOptionData> HairColorOptions { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterHairColorOptionData
 {
     public required int Id { get; init; }

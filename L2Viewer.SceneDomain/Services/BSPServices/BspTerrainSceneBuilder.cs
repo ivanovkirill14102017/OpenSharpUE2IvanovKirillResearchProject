@@ -6,7 +6,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.BSPServices;
 
-[ForExternalUse]
 public sealed class BspTerrainSceneBuilder
 {
     private const int TerrainTileSize = 32;

@@ -19,6 +19,16 @@ public static class SceneStableNameUtility
         return BuildActorStableName(prefix: null, unr.FilePath, actor.ObjectName, actor.ClassName, actor.ExportIndex);
     }
 
+    public static string BuildSourceObjectStableName(
+        string? prefix,
+        string sourcePath,
+        string? objectName,
+        string? className,
+        int exportIndex)
+    {
+        return BuildActorStableName(prefix, sourcePath, objectName, className, exportIndex);
+    }
+
     public static string BuildActorStableName(
         string prefix,
         UnrFile.UnrFile unr,

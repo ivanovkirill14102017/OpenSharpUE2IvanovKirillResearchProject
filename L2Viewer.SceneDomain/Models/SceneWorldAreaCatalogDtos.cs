@@ -2,7 +2,6 @@ using System.Numerics;
 
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public enum SceneWorldPointSourceKind
 {
     HuntingZoneDat,
@@ -10,7 +9,6 @@ public enum SceneWorldPointSourceKind
     AdminTeleportHtml
 }
 
-[ForExternalUse]
 public sealed class SceneWorldAreaCatalogData
 {
     public required string Quadrant { get; init; }
@@ -19,7 +17,6 @@ public sealed class SceneWorldAreaCatalogData
     public required IReadOnlyList<SceneWorldTeleportPointData> TeleportPoints { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneWorldAreaBoundsData
 {
     public required uint AreaId { get; init; }
@@ -36,7 +33,6 @@ public sealed class SceneWorldAreaBoundsData
     public required string Map { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneWorldInterestPointData
 {
     public required uint PointId { get; init; }
@@ -48,7 +44,6 @@ public sealed class SceneWorldInterestPointData
     public required string SourceGroup { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneWorldTeleportPointData
 {
     public required string Name { get; init; }

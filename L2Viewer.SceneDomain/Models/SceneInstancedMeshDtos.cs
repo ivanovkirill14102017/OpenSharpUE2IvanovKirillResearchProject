@@ -32,6 +32,7 @@ public sealed class SceneTriangleMeshData
 
 public sealed class SceneStaticMeshSubMeshDefinition
 {
+    public required int SubMeshIndex { get; init; }
     public required int MaterialId { get; init; }
     public required int TriangleCount { get; init; }
     public string? MaterialReference { get; init; }
@@ -62,3 +63,4 @@ public sealed class SceneStaticMeshInstance
     public required Vector3 Scale { get; init; }
     public required Vector3 PrePivot { get; init; }
 }
+

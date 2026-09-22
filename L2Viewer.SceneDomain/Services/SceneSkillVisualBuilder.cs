@@ -4,7 +4,6 @@ using L2Viewer.SceneDomain.Services.SkillServices;
 
 namespace L2Viewer.SceneDomain.Services;
 
-[ForExternalUse]
 public sealed class SceneSkillVisualBuilder
 {
     public SceneSkillVisualData Build(string clientRoot, int skillId)

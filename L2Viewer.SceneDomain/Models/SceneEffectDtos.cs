@@ -33,7 +33,12 @@ public sealed class SceneSunData
     public Vector3? WorldRotationEulerDegrees { get; init; }
     public float? Brightness { get; init; }
     public float? Radius { get; init; }
+    public float? Latitude { get; init; }
+    public float? Longitude { get; init; }
     public float? LimitMaxRadius { get; init; }
+    public float? Scale { get; init; }
+    public Vector3? Position { get; init; }
+    public bool MakeLightmap { get; init; }
     public bool Directional { get; init; }
     public bool SunAffect { get; init; }
     public bool DynamicActorFilterState { get; init; }
@@ -52,10 +57,23 @@ public sealed class SceneMoonData
     public Vector3? WorldRotationUnrealRaw { get; init; }
     public Vector3? WorldRotationEulerDegrees { get; init; }
     public float? Radius { get; init; }
+    public float? Latitude { get; init; }
+    public float? Longitude { get; init; }
+    public float? LimitMaxRadius { get; init; }
+    public float? Scale { get; init; }
+    public Vector3? Position { get; init; }
+    public bool MakeLightmap { get; init; }
+    public bool MoonLight { get; init; }
+    public int? EnvironmentType { get; init; }
+    public bool Directional { get; init; }
+    public byte? LightHue { get; init; }
+    public byte? LightSaturation { get; init; }
+    public float? LightBrightness { get; init; }
     public bool SunAffect { get; init; }
     public bool DynamicActorFilterState { get; init; }
     public bool LightChanged { get; init; }
     public string[] SkinReferences { get; init; } = [];
+    public string[] FlameReferences { get; init; } = [];
 }
 
 public sealed class SceneZoneInfoData : SceneActorBrushData
@@ -82,6 +100,8 @@ public sealed class SceneSkyZoneData
     public required string Name { get; init; }
     public required string ClassName { get; init; }
     public string? Tag { get; init; }
+    public int? ZoneNumber { get; init; }
+    public int? LeafIndex { get; init; }
     public Vector3? WorldLocation { get; init; }
     public Vector3? WorldRotationUnrealRaw { get; init; }
     public Vector3? WorldRotationEulerDegrees { get; init; }
@@ -100,8 +120,31 @@ public sealed class SceneSkyEnvironmentData
     public required SceneSkyZoneData[] SkyZones { get; init; }
     public required SceneSunData[] Suns { get; init; }
     public required SceneMoonData[] Moons { get; init; }
+    public required SceneBspScene Geometry { get; init; }
+    public required SceneSkyLayerData[] Layers { get; init; }
     public required SceneSkySourceReferenceData[] SourceReferences { get; init; }
     public required SceneSkySurfaceMaterialData[] SurfaceMaterials { get; init; }
+}
+
+public enum SceneSkyLayerKind
+{
+    Other = 0,
+    Background,
+    Haze,
+    Cloud,
+    Stars
+}
+
+public sealed class SceneSkyLayerData
+{
+    public required string StableName { get; init; }
+    public required SceneSkyLayerKind Kind { get; init; }
+    public required int ModelExportIndex { get; init; }
+    public required string ModelStableName { get; init; }
+    public required int ChunkIndex { get; init; }
+    public required string ChunkStableName { get; init; }
+    public required string MaterialReference { get; init; }
+    public required SceneBspMeshSection Geometry { get; init; }
 }
 
 public sealed class SceneSkySourceReferenceData

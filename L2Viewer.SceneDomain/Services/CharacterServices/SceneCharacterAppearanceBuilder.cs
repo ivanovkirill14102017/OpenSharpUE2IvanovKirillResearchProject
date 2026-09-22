@@ -5,7 +5,6 @@ using L2Viewer.UkxFile;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneCharacterAppearanceBuilder
 {
     private readonly SceneCharacterAppearanceOptionsBuilder _optionsBuilder = new();

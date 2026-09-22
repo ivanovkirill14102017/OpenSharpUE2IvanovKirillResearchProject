@@ -13,6 +13,7 @@ internal static class UnrMeshEmitterObjectReader
     {
         using var reader = PackageReader.OpenExportReader(package, export);
         UnrFileObjectReference? staticMeshReference = null;
+        byte? drawStyle = null;
         var useMeshBlendMode = false;
         var renderTwoSided = false;
         float? opacity = null;
@@ -25,6 +26,9 @@ internal static class UnrMeshEmitterObjectReader
         var spinParticles = false;
         UnrRangeVector? spinsPerSecondRange = null;
         UnrRangeVector? startSpinRange = null;
+        var useSizeScale = false;
+        var useRegularSizeScale = false;
+        var sizeScale = new List<UnrParticleSizeScale>();
         UnrRangeVector? startSizeRange = null;
         UnrFloatRange? lifetimeRange = null;
         UnrRangeVector? startVelocityRange = null;
@@ -102,6 +106,9 @@ internal static class UnrMeshEmitterObjectReader
                 case UnrMeshEmitterPropertyKind.StaticMesh:
                     staticMeshReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
+                case UnrMeshEmitterPropertyKind.DrawStyle:
+                    drawStyle = reader.ReadByteProperty(tag, className, exportIndex, objectName);
+                    return;
                 case UnrMeshEmitterPropertyKind.UseMeshBlendMode:
                     useMeshBlendMode = ReadStrictBool(tag, className, exportIndex, objectName);
                     return;
@@ -137,6 +144,15 @@ internal static class UnrMeshEmitterObjectReader
                     return;
                 case UnrMeshEmitterPropertyKind.StartSpinRange:
                     startSpinRange = ReadRangeVectorStruct(package, reader, tag, className, exportIndex, objectName);
+                    return;
+                case UnrMeshEmitterPropertyKind.UseSizeScale:
+                    useSizeScale = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrMeshEmitterPropertyKind.UseRegularSizeScale:
+                    useRegularSizeScale = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
+                case UnrMeshEmitterPropertyKind.SizeScale:
+                    sizeScale.AddRange(UnrParticleStructPropertyReader.ReadParticleSizeScaleProperties(package, reader, tag, className, exportIndex, objectName));
                     return;
                 case UnrMeshEmitterPropertyKind.StartSizeRange:
                     startSizeRange = ReadRangeVectorStruct(package, reader, tag, className, exportIndex, objectName);
@@ -186,6 +202,7 @@ internal static class UnrMeshEmitterObjectReader
             ClassName = className,
             ObjectName = objectName,
             StaticMeshReference = staticMeshReference,
+            DrawStyle = drawStyle,
             UseMeshBlendMode = useMeshBlendMode,
             RenderTwoSided = renderTwoSided,
             Opacity = opacity,
@@ -198,6 +215,9 @@ internal static class UnrMeshEmitterObjectReader
             SpinParticles = spinParticles,
             SpinsPerSecondRange = spinsPerSecondRange,
             StartSpinRange = startSpinRange,
+            UseSizeScale = useSizeScale,
+            UseRegularSizeScale = useRegularSizeScale,
+            SizeScale = sizeScale.OrderBy(x => x.ArrayIndex).ToArray(),
             StartSizeRange = startSizeRange,
             LifetimeRange = lifetimeRange,
             StartVelocityRange = startVelocityRange,
@@ -318,6 +338,7 @@ internal static class UnrMeshEmitterObjectReader
     private enum UnrMeshEmitterPropertyKind
     {
         StaticMesh,
+        DrawStyle,
         UseMeshBlendMode,
         RenderTwoSided,
         ColorScale,
@@ -331,6 +352,9 @@ internal static class UnrMeshEmitterObjectReader
         SpinParticles,
         SpinsPerSecondRange,
         StartSpinRange,
+        UseSizeScale,
+        UseRegularSizeScale,
+        SizeScale,
         StartSizeRange,
         LifetimeRange,
         StartVelocityRange,

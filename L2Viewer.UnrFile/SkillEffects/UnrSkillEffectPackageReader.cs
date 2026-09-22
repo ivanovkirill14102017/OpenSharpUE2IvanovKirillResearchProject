@@ -1,5 +1,3 @@
-using L2Viewer.UFile;
-
 namespace L2Viewer.UnrFile;
 
 public static class UnrSkillEffectPackageReader
@@ -18,24 +16,16 @@ public static class UnrSkillEffectPackageReader
             throw new FileNotFoundException("Skill effect package was not found.", path);
         }
 
-        var package = PackageReader.LoadPackage(path);
-        var file = UFileReader.Read(path);
-        var scriptByClassName = UFileReader.ReadTextBufferExports(file)
-            .Where(x => x.ClassDeclaration is not null)
-            .ToDictionary(x => x.ClassDeclaration!.ClassName, x => x.ClassDeclaration!.SuperClassName, StringComparer.OrdinalIgnoreCase);
-
         var stages = new List<UnrSkillEffectStageObject>();
-        foreach (var stageExport in file.Exports)
+        foreach (var emitterClass in UnrClassEffectPackageReader.ReadEmitterClasses(path))
         {
-            if (!TryExtractStageMetadata(stageExport.ObjectName, out var stageKey, out var stageOrder))
+            if (!TryExtractStageMetadata(emitterClass.ObjectName, out var stageKey, out var stageOrder))
             {
                 continue;
             }
 
-            var childLayers = package.Exports
-                .Select((export, index) => new { Export = export, Index = index })
-                .Where(x => unchecked((int)x.Export.PackageIndex) == stageExport.ExportIndex + 1)
-                .Select(x => TryReadLayer(package, x.Export, x.Index))
+            var childLayers = emitterClass.Layers
+                .Select(TryAdaptLayer)
                 .Where(static x => x is not null)
                 .Cast<UnrSkillEffectLayerObject>()
                 .ToArray();
@@ -47,9 +37,9 @@ public static class UnrSkillEffectPackageReader
 
             stages.Add(new UnrSkillEffectStageObject
             {
-                ObjectName = stageExport.ObjectName,
-                DeclaredClassName = stageExport.ClassName,
-                SuperClassName = scriptByClassName.GetValueOrDefault(stageExport.ObjectName),
+                ObjectName = emitterClass.ObjectName,
+                DeclaredClassName = nameof(UnrEmitterClassObject),
+                SuperClassName = emitterClass.SuperClassName,
                 StageKey = stageKey,
                 StageOrder = stageOrder,
                 Layers = childLayers
@@ -62,17 +52,14 @@ public static class UnrSkillEffectPackageReader
             .ToArray();
     }
 
-    private static UnrSkillEffectLayerObject? TryReadLayer(PackageData package, ExportEntry export, int exportIndex)
+    private static UnrSkillEffectLayerObject? TryAdaptLayer(UnrFileObject layer)
     {
-        var className = PackageReader.ExportClassName(package, export);
-        var objectName = PackageReader.SafeName(package.Names, export.ObjectName);
-
-        return className switch
+        return layer switch
         {
-            "SpriteEmitter" => FromSpriteEmitter(UnrSpriteEmitterObjectReader.Read(package, export, exportIndex, className, objectName)),
-            "MeshEmitter" => FromMeshEmitter(UnrMeshEmitterObjectReader.Read(package, export, exportIndex, className, objectName)),
-            "BeamEmitter" => FromBeamEmitter(UnrBeamEmitterObjectReader.Read(package, export, exportIndex, className, objectName)),
-            "VertMeshEmitter" => FromVertMeshEmitter(UnrVertMeshEmitterObjectReader.Read(package, export, exportIndex, className, objectName)),
+            UnrSpriteEmitterObject sprite => FromSpriteEmitter(sprite),
+            UnrMeshEmitterObject mesh => FromMeshEmitter(mesh),
+            UnrBeamEmitterObject beam => FromBeamEmitter(beam),
+            UnrVertMeshEmitterObject vertMesh => FromVertMeshEmitter(vertMesh),
             _ => null
         };
     }
@@ -87,6 +74,13 @@ public static class UnrSkillEffectPackageReader
             LayerName = layer.NameValue,
             StaticMeshReference = null,
             TextureReference = layer.TextureReference,
+            DrawStyle = layer.DrawStyle,
+            TextureUSubdivisions = layer.TextureUSubdivisions,
+            TextureVSubdivisions = layer.TextureVSubdivisions,
+            SubdivisionStart = layer.SubdivisionStart,
+            SubdivisionEnd = layer.SubdivisionEnd,
+            UseRandomSubdivision = layer.UseRandomSubdivision,
+            BlendBetweenSubdivisions = layer.BlendBetweenSubdivisions,
             Opacity = layer.Opacity,
             FadeOutStartTime = layer.FadeOutStartTime,
             FadeOut = layer.FadeOut,
@@ -115,6 +109,8 @@ public static class UnrSkillEffectPackageReader
             LayerName = layer.NameValue,
             StaticMeshReference = layer.StaticMeshReference,
             TextureReference = null,
+            DrawStyle = layer.DrawStyle,
+            UseMeshBlendMode = layer.UseMeshBlendMode,
             Opacity = layer.Opacity,
             FadeOutStartTime = layer.FadeOutStartTime,
             FadeOut = layer.FadeOut,
@@ -129,7 +125,7 @@ public static class UnrSkillEffectPackageReader
             StartSpinRange = layer.StartSpinRange,
             SpinsPerSecondRange = layer.SpinsPerSecondRange,
             ColorScale = layer.ColorScale,
-            SizeScale = []
+            SizeScale = layer.UseSizeScale ? layer.SizeScale : []
         };
     }
 
@@ -171,6 +167,7 @@ public static class UnrSkillEffectPackageReader
             LayerName = layer.NameValue,
             StaticMeshReference = layer.StaticMeshReference,
             TextureReference = layer.TextureReference,
+            DrawStyle = layer.DrawStyle,
             Opacity = layer.Opacity,
             FadeOutStartTime = layer.FadeOutStartTime,
             FadeOut = layer.FadeOut,

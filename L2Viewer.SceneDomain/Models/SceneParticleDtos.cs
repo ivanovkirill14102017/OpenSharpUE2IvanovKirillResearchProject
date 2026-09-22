@@ -69,6 +69,11 @@ public sealed class SceneSpriteEmitterLayerData : SceneColorScaledParticleLayerD
     public bool UniformSize { get; init; }
     public byte? DrawStyle { get; init; }
     public string? TextureReference { get; init; }
+    public int? TextureUSubdivisions { get; init; }
+    public int? TextureVSubdivisions { get; init; }
+    public int? SubdivisionStart { get; init; }
+    public int? SubdivisionEnd { get; init; }
+    public bool UseRandomSubdivision { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
     public bool BlendBetweenSubdivisions { get; init; }
 }
@@ -76,11 +81,13 @@ public sealed class SceneSpriteEmitterLayerData : SceneColorScaledParticleLayerD
 public sealed class SceneMeshEmitterLayerData : SceneFadeInParticleLayerData
 {
     public string? StaticMeshReference { get; init; }
+    public byte? DrawStyle { get; init; }
     public bool UseMeshBlendMode { get; init; }
     public bool RenderTwoSided { get; init; }
     public bool SpinParticles { get; init; }
     public UnrRangeVector? SpinsPerSecondRange { get; init; }
     public UnrRangeVector? StartSpinRange { get; init; }
+    public UnrParticleSizeScale[] SizeScale { get; init; } = [];
     public UnrRangeVector? StartSizeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
 }

@@ -2,7 +2,6 @@ using L2Viewer.SceneDomain.Models;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneSkeletalMeshResolver
 {
     private readonly SceneSkeletalAssetBuilder _assetBuilder = new();

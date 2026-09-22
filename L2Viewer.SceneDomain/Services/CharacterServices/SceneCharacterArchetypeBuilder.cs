@@ -4,7 +4,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneCharacterArchetypeBuilder
 {
     private static readonly string[] PrimarySlotOrder = ["Upper", "Lower", "Face", "Gloves", "Boots", "Hair"];

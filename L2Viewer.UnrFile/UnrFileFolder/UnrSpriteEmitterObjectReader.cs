@@ -32,6 +32,11 @@ internal static class UnrSpriteEmitterObjectReader
         var uniformSize = false;
         byte? drawStyle = null;
         UnrFileObjectReference? textureReference = null;
+        int? textureUSubdivisions = null;
+        int? textureVSubdivisions = null;
+        int? subdivisionStart = null;
+        int? subdivisionEnd = null;
+        var useRandomSubdivision = false;
         UnrFloatRange? lifetimeRange = null;
         UnrRangeVector? startVelocityRange = null;
         float? warmupTicksPerSecond = null;
@@ -166,6 +171,21 @@ internal static class UnrSpriteEmitterObjectReader
                 case UnrSpriteEmitterPropertyKind.Texture:
                     textureReference = reader.ReadOptionalObjectReferenceProperty(package, tag, className, exportIndex, objectName);
                     return;
+                case UnrSpriteEmitterPropertyKind.TextureUSubdivisions:
+                    textureUSubdivisions = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrSpriteEmitterPropertyKind.TextureVSubdivisions:
+                    textureVSubdivisions = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrSpriteEmitterPropertyKind.SubdivisionStart:
+                    subdivisionStart = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrSpriteEmitterPropertyKind.SubdivisionEnd:
+                    subdivisionEnd = reader.ReadIntProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrSpriteEmitterPropertyKind.UseRandomSubdivision:
+                    useRandomSubdivision = ReadStrictBool(tag, className, exportIndex, objectName);
+                    return;
                 case UnrSpriteEmitterPropertyKind.LifetimeRange:
                     lifetimeRange = ReadRangeStruct(package, reader, tag, className, exportIndex, objectName);
                     return;
@@ -236,6 +256,11 @@ internal static class UnrSpriteEmitterObjectReader
             UniformSize = uniformSize,
             DrawStyle = drawStyle,
             TextureReference = textureReference,
+            TextureUSubdivisions = textureUSubdivisions,
+            TextureVSubdivisions = textureVSubdivisions,
+            SubdivisionStart = subdivisionStart,
+            SubdivisionEnd = subdivisionEnd,
+            UseRandomSubdivision = useRandomSubdivision,
             LifetimeRange = lifetimeRange,
             StartVelocityRange = startVelocityRange,
             WarmupTicksPerSecond = warmupTicksPerSecond,
@@ -372,6 +397,11 @@ internal static class UnrSpriteEmitterObjectReader
         UniformSize,
         DrawStyle,
         Texture,
+        TextureUSubdivisions,
+        TextureVSubdivisions,
+        SubdivisionStart,
+        SubdivisionEnd,
+        UseRandomSubdivision,
         LifetimeRange,
         StartVelocityRange,
         WarmupTicksPerSecond,

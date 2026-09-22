@@ -1,6 +1,5 @@
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public sealed class SceneSkillVisualData
 {
     public required int SkillId { get; init; }
@@ -108,7 +107,16 @@ public sealed class SceneSkillVisualLayerData
     public string? StaticMeshReference { get; init; }
     public SceneResourceReference? StaticMeshResourceReference { get; init; }
     public SceneResourceLocation? StaticMeshResource { get; init; }
+    public IReadOnlyList<SceneSkillVisualMeshPartData> MeshParts { get; init; } = [];
     public string? TextureReference { get; init; }
+    public byte? DrawStyle { get; init; }
+    public bool UseMeshBlendMode { get; init; }
+    public int? TextureUSubdivisions { get; init; }
+    public int? TextureVSubdivisions { get; init; }
+    public int? SubdivisionStart { get; init; }
+    public int? SubdivisionEnd { get; init; }
+    public bool UseRandomSubdivision { get; init; }
+    public bool BlendBetweenSubdivisions { get; init; }
     public SceneResourceReference? TextureResourceReference { get; init; }
     public SceneResourceLocation? TextureResource { get; init; }
     public float? Opacity { get; init; }
@@ -127,3 +135,15 @@ public sealed class SceneSkillVisualLayerData
     public UnrParticleColorScale[] ColorScale { get; init; } = [];
     public UnrParticleSizeScale[] SizeScale { get; init; } = [];
 }
+
+public sealed class SceneSkillVisualMeshPartData
+{
+    public required int SubMeshIndex { get; init; }
+    public required int MaterialId { get; init; }
+    public required int TriangleCount { get; init; }
+    public string? MaterialReference { get; init; }
+    public SceneResourceLocation? MaterialResource { get; init; }
+    public string? PrimaryTextureReference { get; init; }
+    public SceneResourceLocation? PrimaryTextureResource { get; init; }
+}
+

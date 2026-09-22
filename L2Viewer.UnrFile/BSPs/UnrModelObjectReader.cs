@@ -155,7 +155,9 @@ internal static class UnrModelObjectReader
             var actorIndex = PackageReader.ReadCompactIndex(reader);
             var plane = new Vector4(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
             var lightMapScale = reader.ReadSingle();
-            var lightMapIndex = reader.ReadInt32();
+            var lightMapIndex = package.IsLicenseeVersionAtLeast(L2LicenseeVersion.Ver20)
+                ? reader.ReadInt32()
+                : -1;
 
             values[i] = new UnrModelSurface
             {

@@ -1,6 +1,5 @@
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public enum SceneCharacterEquipmentBodyPart
 {
     Underwear,
@@ -21,7 +20,6 @@ public enum SceneCharacterEquipmentBodyPart
     LeftRightHand
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterEquipmentCatalogData
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
@@ -31,14 +29,12 @@ public sealed class SceneCharacterEquipmentCatalogData
     public required IReadOnlyList<string> Warnings { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterEquipmentCatalogSlotData
 {
     public required SceneCharacterPaperdollSlot Slot { get; init; }
     public required IReadOnlyList<SceneCharacterEquipmentCatalogItemData> Items { get; init; }
 }
 
-[ForExternalUse]
 public sealed class SceneCharacterEquipmentCatalogItemData
 {
     public required int ItemId { get; init; }

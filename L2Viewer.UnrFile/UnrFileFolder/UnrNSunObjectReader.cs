@@ -34,12 +34,19 @@ internal static class UnrNSunObjectReader
         UnrFileObjectReference? physicsVolumeReference = null;
         UnrFileObjectReference? staticMeshReference = null;
         float? radius = null;
+        float? latitude = null;
+        float? longitude = null;
         float? limitMaxRadius = null;
+        float? sunScale = null;
+        Vector3? position = null;
+        var makeLightmap = false;
         var dynamicActorFilterState = false;
         var lightChanged = false;
         var sunAffect = false;
         var directional = false;
         Vector3? swayRotationOrig = null;
+        UnrPointRegion? region = null;
+        UnrTextureModifyInfo? texModifyInfo = null;
         var skins = new List<UnrFileObjectReference>();
         var unknownProperties = new List<UnrFileUnknownProperty>();
 
@@ -231,8 +238,23 @@ internal static class UnrNSunObjectReader
                 case UnrNSunPropertyKind.Radius:
                     radius = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
                     return;
+                case UnrNSunPropertyKind.Latitude:
+                    latitude = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNSunPropertyKind.Longitude:
+                    longitude = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
                 case UnrNSunPropertyKind.LimitMaxRadius:
                     limitMaxRadius = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNSunPropertyKind.SunScale:
+                    sunScale = reader.ReadFloatProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNSunPropertyKind.Position:
+                    position = reader.ReadVectorProperty(tag, className, exportIndex, objectName);
+                    return;
+                case UnrNSunPropertyKind.bMakeLightmap:
+                    makeLightmap = ReadStrictBool(tag, className, exportIndex, objectName);
                     return;
                 case UnrNSunPropertyKind.bDynamicActorFilterState:
                     dynamicActorFilterState = ReadStrictBool(tag, className, exportIndex, objectName);
@@ -259,8 +281,10 @@ internal static class UnrNSunObjectReader
                     SetSkin(tag.ArrayIndex, reader.ReadObjectReferenceProperty(package, tag, className, exportIndex, objectName)!);
                     return;
                 case UnrNSunPropertyKind.Region:
+                    region = UnrStructPropertyReader.ReadPointRegionProperty(package, reader, tag, className, exportIndex, objectName);
+                    return;
                 case UnrNSunPropertyKind.TexModifyInfo:
-                    AddUnknownProperty(tag);
+                    texModifyInfo = UnrStructPropertyReader.ReadTextureModifyInfoProperty(package, reader, tag, className, exportIndex, objectName);
                     return;
             }
         }
@@ -321,13 +345,20 @@ internal static class UnrNSunObjectReader
             PhysicsVolumeReference = physicsVolumeReference,
             StaticMeshReference = staticMeshReference,
             Radius = radius,
+            Latitude = latitude,
+            Longitude = longitude,
             LimitMaxRadius = limitMaxRadius,
+            SunScale = sunScale,
+            Position = position,
+            MakeLightmap = makeLightmap,
             Skins = skins.ToArray(),
             DynamicActorFilterState = dynamicActorFilterState,
             LightChanged = lightChanged,
             SunAffect = sunAffect,
             Directional = directional,
             SwayRotationOrig = swayRotationOrig,
+            Region = region,
+            TexModifyInfo = texModifyInfo,
             UnknownProperties = unknownProperties.ToArray()
         };
     }
@@ -361,7 +392,12 @@ internal static class UnrNSunObjectReader
         PhysicsVolume,
         StaticMesh,
         Radius,
+        Latitude,
+        Longitude,
         LimitMaxRadius,
+        SunScale,
+        Position,
+        bMakeLightmap,
         Skins,
         bDynamicActorFilterState,
         bLightChanged,

@@ -6,7 +6,6 @@ using System.Text.RegularExpressions;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneCharacterAppearanceOptionsBuilder
 {
     public SceneCharacterAppearanceOptionsData Build(

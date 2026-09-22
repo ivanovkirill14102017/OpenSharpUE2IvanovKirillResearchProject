@@ -1,6 +1,5 @@
 namespace L2Viewer.SceneDomain.Models;
 
-[ForExternalUse]
 public sealed class SceneCharacterArchetypeData
 {
     public required int ArchetypeIndex { get; init; }

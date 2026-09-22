@@ -5,7 +5,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.CharacterServices;
 
-[ForExternalUse]
 public sealed class SceneCharacterEquipmentCatalogBuilder
 {
     public SceneCharacterEquipmentCatalogData Build(

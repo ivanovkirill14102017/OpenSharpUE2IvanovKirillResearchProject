@@ -4,7 +4,6 @@ using L2Viewer.SceneDomain.Services.Utility;
 
 namespace L2Viewer.SceneDomain.Services.BSPServices;
 
-[ForExternalUse]
 public sealed class BspPropSceneBuilder
 {
     private readonly BspStaticMeshManager _staticMeshManager;

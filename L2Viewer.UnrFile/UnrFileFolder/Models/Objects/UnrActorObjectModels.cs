@@ -160,10 +160,25 @@ public sealed class UnrMusicVolumeObject : UnrVolumeBaseObject
 public sealed class UnrNMoonObject : UnrActorBaseObject
 {
     public float? Radius { get; init; }
+    public float? Latitude { get; init; }
+    public float? Longitude { get; init; }
+    public float? LimitMaxRadius { get; init; }
+    public float? MoonScale { get; init; }
+    public Vector3? Position { get; init; }
+    public bool MakeLightmap { get; init; }
+    public bool MoonLight { get; init; }
+    public int? EnvType { get; init; }
+    public UnrFileObjectReference[] Flames { get; init; } = [];
+    public byte? LightHue { get; init; }
+    public byte? LightSaturation { get; init; }
+    public float? LightBrightness { get; init; }
     public UnrFileObjectReference[] Skins { get; init; } = [];
     public bool DynamicActorFilterState { get; init; }
     public bool LightChanged { get; init; }
     public bool SunAffect { get; init; }
+    public bool Directional { get; init; }
+    public UnrPointRegion? Region { get; init; }
+    public UnrTextureModifyInfo? TexModifyInfo { get; init; }
 }
 public sealed class UnrNMovableSunLightObject : UnrActorBaseObject
 {
@@ -176,13 +191,20 @@ public sealed class UnrNMovableSunLightObject : UnrActorBaseObject
 public sealed class UnrNSunObject : UnrActorBaseObject
 {
     public float? Radius { get; init; }
+    public float? Latitude { get; init; }
+    public float? Longitude { get; init; }
     public float? LimitMaxRadius { get; init; }
+    public float? SunScale { get; init; }
+    public Vector3? Position { get; init; }
+    public bool MakeLightmap { get; init; }
     public UnrFileObjectReference[] Skins { get; init; } = [];
     public bool DynamicActorFilterState { get; init; }
     public bool LightChanged { get; init; }
     public bool SunAffect { get; init; }
     public bool Directional { get; init; }
     public Vector3? SwayRotationOrig { get; init; }
+    public UnrPointRegion? Region { get; init; }
+    public UnrTextureModifyInfo? TexModifyInfo { get; init; }
 }
 public sealed class UnrPlayerStartObject : UnrActorBaseObject;
 public sealed class UnrSkyZoneInfoObject : UnrActorBaseObject
@@ -219,6 +241,11 @@ public sealed class UnrSpriteEmitterObject : UnrFileObject, IUnrTimedParticleLay
     public bool UniformSize { get; init; }
     public byte? DrawStyle { get; init; }
     public UnrFileObjectReference? TextureReference { get; init; }
+    public int? TextureUSubdivisions { get; init; }
+    public int? TextureVSubdivisions { get; init; }
+    public int? SubdivisionStart { get; init; }
+    public int? SubdivisionEnd { get; init; }
+    public bool UseRandomSubdivision { get; init; }
     public UnrFloatRange? LifetimeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
     public float? WarmupTicksPerSecond { get; init; }
@@ -301,6 +328,7 @@ public sealed class UnrMovableStaticMeshActorObject : UnrActorBaseObject
 public sealed class UnrMeshEmitterObject : UnrFileObject, IUnrFadeInParticleLayerObject, IUnrColorScaledParticleLayerObject
 {
     public UnrFileObjectReference? StaticMeshReference { get; init; }
+    public byte? DrawStyle { get; init; }
     public bool UseMeshBlendMode { get; init; }
     public bool RenderTwoSided { get; init; }
     public float? Opacity { get; init; }
@@ -313,6 +341,9 @@ public sealed class UnrMeshEmitterObject : UnrFileObject, IUnrFadeInParticleLaye
     public bool SpinParticles { get; init; }
     public UnrRangeVector? SpinsPerSecondRange { get; init; }
     public UnrRangeVector? StartSpinRange { get; init; }
+    public bool UseSizeScale { get; init; }
+    public bool UseRegularSizeScale { get; init; }
+    public UnrParticleSizeScale[] SizeScale { get; init; } = [];
     public UnrRangeVector? StartSizeRange { get; init; }
     public UnrFloatRange? LifetimeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }

@@ -18,6 +18,14 @@ public sealed class UnrSkillEffectLayerObject
     public string? LayerName { get; init; }
     public UnrFileObjectReference? StaticMeshReference { get; init; }
     public UnrFileObjectReference? TextureReference { get; init; }
+    public byte? DrawStyle { get; init; }
+    public bool UseMeshBlendMode { get; init; }
+    public int? TextureUSubdivisions { get; init; }
+    public int? TextureVSubdivisions { get; init; }
+    public int? SubdivisionStart { get; init; }
+    public int? SubdivisionEnd { get; init; }
+    public bool UseRandomSubdivision { get; init; }
+    public bool BlendBetweenSubdivisions { get; init; }
     public float? Opacity { get; init; }
     public float? FadeOutStartTime { get; init; }
     public bool FadeOut { get; init; }

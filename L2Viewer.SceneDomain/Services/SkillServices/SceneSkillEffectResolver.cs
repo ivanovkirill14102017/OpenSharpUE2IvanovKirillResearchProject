@@ -1,5 +1,6 @@
 using System.Text;
 using L2Viewer.SceneDomain.Models;
+using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.SceneDomain.Services.Utility;
 using L2Viewer.UnrFile;
 
@@ -17,13 +18,14 @@ internal static class SceneSkillEffectResolver
     {
         var rawStages = UnrSkillEffectPackageReader.ReadStages(lineageEffectPath);
         var resourcePackageIndex = ScenePackageIndexer.BuildResourcePackageIndex(clientRoot);
+        var staticMeshResolver = new SceneStaticMeshResolver(clientRoot, new BspTextureManager(clientRoot));
 
         var effects = new List<SceneSkillVisualEffectData>();
         foreach (var candidate in BuildEffectCandidates(levels, names, sounds))
         {
             var stages = rawStages
                 .Where(x => TryExtractFamilyStageKey(x.ObjectName, candidate.Stem) is not null)
-                .Select(x => AdaptStage(clientRoot, lineageEffectPath, x, resourcePackageIndex, warnings))
+                .Select(x => AdaptStage(clientRoot, lineageEffectPath, x, resourcePackageIndex, staticMeshResolver, warnings))
                 .ToArray();
             if (stages.Length == 0)
             {
@@ -84,6 +86,7 @@ internal static class SceneSkillEffectResolver
         string lineageEffectPath,
         UnrSkillEffectStageObject stage,
         IReadOnlyDictionary<string, string> resourcePackageIndex,
+        SceneStaticMeshResolver staticMeshResolver,
         ICollection<string> warnings)
     {
         var packageName = Path.GetFileNameWithoutExtension(lineageEffectPath);
@@ -103,7 +106,7 @@ internal static class SceneSkillEffectResolver
             stageClassName);
 
         var layers = stage.Layers
-            .Select(x => AdaptLayer(clientRoot, lineageEffectPath, x, resourcePackageIndex, warnings))
+            .Select(x => AdaptLayer(clientRoot, lineageEffectPath, x, resourcePackageIndex, staticMeshResolver, warnings))
             .ToArray();
 
         return new SceneSkillVisualStageData
@@ -125,6 +128,7 @@ internal static class SceneSkillEffectResolver
         string lineageEffectPath,
         UnrSkillEffectLayerObject layer,
         IReadOnlyDictionary<string, string> resourcePackageIndex,
+        SceneStaticMeshResolver staticMeshResolver,
         ICollection<string> warnings)
     {
         var packageName = Path.GetFileNameWithoutExtension(lineageEffectPath);
@@ -145,6 +149,7 @@ internal static class SceneSkillEffectResolver
         var staticMeshReference = ToReferenceText(layer.StaticMeshReference);
         var textureReference = ToReferenceText(layer.TextureReference);
         var staticMeshResourceReference = TryBuildResourceReference(staticMeshReference, UnrealClassNames.StaticMesh);
+        var meshParts = BuildMeshParts(lineageEffectPath, layer.StaticMeshReference, staticMeshResolver);
         var textureResourceReference = TryBuildResourceReference(textureReference, UnrealClassNames.Texture);
 
         return new SceneSkillVisualLayerData
@@ -158,7 +163,16 @@ internal static class SceneSkillEffectResolver
             StaticMeshReference = staticMeshReference,
             StaticMeshResourceReference = staticMeshResourceReference,
             StaticMeshResource = TryResolveResourceLocation(staticMeshResourceReference, resourcePackageIndex, clientRoot, warnings),
+            MeshParts = meshParts,
             TextureReference = textureReference,
+            DrawStyle = layer.DrawStyle ?? 3,
+            UseMeshBlendMode = layer.UseMeshBlendMode,
+            TextureUSubdivisions = layer.TextureUSubdivisions,
+            TextureVSubdivisions = layer.TextureVSubdivisions,
+            SubdivisionStart = layer.SubdivisionStart,
+            SubdivisionEnd = layer.SubdivisionEnd,
+            UseRandomSubdivision = layer.UseRandomSubdivision,
+            BlendBetweenSubdivisions = layer.BlendBetweenSubdivisions,
             TextureResourceReference = textureResourceReference,
             TextureResource = TryResolveResourceLocation(textureResourceReference, resourcePackageIndex, clientRoot, warnings),
             Opacity = layer.Opacity,
@@ -179,6 +193,37 @@ internal static class SceneSkillEffectResolver
         };
     }
 
+    private static IReadOnlyList<SceneSkillVisualMeshPartData> BuildMeshParts(
+        string lineageEffectPath,
+        UnrFileObjectReference? staticMeshReference,
+        SceneStaticMeshResolver staticMeshResolver)
+    {
+        if (staticMeshReference is null)
+        {
+            return [];
+        }
+
+        var meshReferenceKey = SceneReferenceUtilities.BuildReference(lineageEffectPath, staticMeshReference);
+        var resolved = staticMeshResolver.ResolveMany(lineageEffectPath, [staticMeshReference]);
+        if (!resolved.TryGetValue(meshReferenceKey, out var meshDefinition))
+        {
+            throw new PackageReadException($"Static mesh '{meshReferenceKey}' was not resolved for skill mesh emitter.");
+        }
+
+        return meshDefinition.SubMeshes
+            .OrderBy(x => x.SubMeshIndex)
+            .Select(x => new SceneSkillVisualMeshPartData
+            {
+                SubMeshIndex = x.SubMeshIndex,
+                MaterialId = x.MaterialId,
+                TriangleCount = x.TriangleCount,
+                MaterialReference = x.MaterialReference,
+                MaterialResource = x.MaterialResource,
+                PrimaryTextureReference = x.PrimaryTextureReference,
+                PrimaryTextureResource = x.PrimaryTextureResource
+            })
+            .ToArray();
+    }
     private static IEnumerable<string?> ResolveDescriptionLinkedStems(
         string? descriptionToken,
         IReadOnlyList<SceneSkillNameEntryData> names,
@@ -320,3 +365,4 @@ internal static class SceneSkillEffectResolver
             reference.ClassName);
     }
 }
+

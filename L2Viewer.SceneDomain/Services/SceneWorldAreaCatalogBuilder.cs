@@ -8,7 +8,6 @@ using L2Viewer.SceneDomain.Services.BSPServices;
 
 namespace L2Viewer.SceneDomain.Services;
 
-[ForExternalUse]
 public sealed class SceneWorldAreaCatalogBuilder
 {
     private static readonly ConcurrentDictionary<string, ParsedServerTeleportCatalog> ServerTeleportCache = new(StringComparer.OrdinalIgnoreCase);
