@@ -58,6 +58,7 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
         var weaponDb = ReadEquipmentDb(weaponJsonPath);
         var warnings = new List<string>();
         var itemsBySlot = new Dictionary<SceneCharacterPaperdollSlot, List<SceneCharacterEquipmentCatalogItemData>>();
+        var skeletalResources = new SceneSkeletalResourceCatalog(clientRoot);
 
         foreach (var dbItem in armorDb)
         {
@@ -87,7 +88,7 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
                 meshGroup.Value.Meshes,
                 meshGroup.Value.Textures,
                 UnrealClassNames.SkeletalMesh);
-            AddItem(itemsBySlot, item);
+            AddItem(itemsBySlot, item, skeletalResources, warnings);
         }
 
         foreach (var dbItem in weaponDb)
@@ -111,7 +112,7 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
                 weaponEntry.WeaponMeshes,
                 weaponEntry.WeaponTextures,
                 UnrealClassNames.SkeletalMesh);
-            AddItem(itemsBySlot, item);
+            AddItem(itemsBySlot, item, skeletalResources, warnings);
         }
 
         var slots = itemsBySlot
@@ -312,8 +313,19 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
 
     private static void AddItem(
         Dictionary<SceneCharacterPaperdollSlot, List<SceneCharacterEquipmentCatalogItemData>> itemsBySlot,
-        SceneCharacterEquipmentCatalogItemData item)
+        SceneCharacterEquipmentCatalogItemData item,
+        SceneSkeletalResourceCatalog skeletalResources,
+        ICollection<string> warnings)
     {
+        var missingMeshes = skeletalResources.FindMissing(item.MeshResources);
+        if (missingMeshes.Length > 0)
+        {
+            warnings.Add(
+                $"Skipped item {item.ItemId} '{item.DisplayName}': skeletal mesh resources do not exist in the client: " +
+                string.Join(", ", missingMeshes.Select(x => x.Reference)) + ".");
+            return;
+        }
+
         foreach (var slot in item.PaperdollSlots)
         {
             if (!itemsBySlot.TryGetValue(slot, out var slotItems))

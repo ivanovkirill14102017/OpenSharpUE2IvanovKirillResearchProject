@@ -20,6 +20,15 @@ public sealed class SceneSkeletalAsset
     public required IReadOnlyList<SceneSkeletalAnimationRoutingProfile> RoutingProfiles { get; init; }
     public required IReadOnlyList<string> ConsumerWarnings { get; init; }
     public required bool RequiresExplicitConsumerRouting { get; init; }
+    public IReadOnlyList<SceneSurfaceResourceReference> SurfaceResourceReferences =>
+        UsedTextures
+            .Select(x => SceneSurfaceResourceReference.Parse(x.Reference))
+            .Concat(MaterialBindings.Select(x => x.SurfaceResourceReference).OfType<SceneSurfaceResourceReference>())
+            .Concat(string.IsNullOrWhiteSpace(PrimaryTextureReference)
+                ? Array.Empty<SceneSurfaceResourceReference>()
+                : new[] { SceneSurfaceResourceReference.Parse(PrimaryTextureReference) })
+            .Distinct()
+            .ToArray();
 }
 
 public sealed class SceneSkeletalMaterialBinding
@@ -29,6 +38,12 @@ public sealed class SceneSkeletalMaterialBinding
     public string? ObjectName { get; init; }
     public string? TextureReference { get; init; }
     public string? ResolvedPackagePath { get; init; }
+    public SceneSurfaceResourceReference? SurfaceResourceReference =>
+        !string.IsNullOrWhiteSpace(TextureReference)
+            ? SceneSurfaceResourceReference.Parse(TextureReference)
+            : !string.IsNullOrWhiteSpace(PackageName) && !string.IsNullOrWhiteSpace(ObjectName)
+                ? SceneSurfaceResourceReference.Create(PackageName, ObjectName)
+                : null;
 }
 
 public sealed class SceneSkeletalSkeleton

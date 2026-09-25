@@ -13,6 +13,7 @@ public sealed class SceneCharacterAppearanceOptionsData
 public sealed class SceneCharacterFaceOptionData
 {
     public required int Id { get; init; }
+    public SceneCharacterPartBinding Binding { get; init; }
     public required SceneResourceReference[] MeshResources { get; init; }
     public required SceneResourceReference[] TextureResources { get; init; }
 }

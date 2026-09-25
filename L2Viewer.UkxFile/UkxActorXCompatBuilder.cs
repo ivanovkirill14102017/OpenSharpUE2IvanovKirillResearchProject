@@ -136,14 +136,7 @@ public static class UkxActorXCompatBuilder
         BlenderCompatAnimationBone[] compatBones,
         List<BlenderCompatAnimationKey> keys)
     {
-        var nameToSkeletonIndex = mesh.RefSkeleton
-            .Select((bone, index) => (bone.Name, index))
-            .ToDictionary(x => x.Name, x => x.index, StringComparer.OrdinalIgnoreCase);
-        var animationBoneToSkeleton = new int[compatBones.Length];
-        for (var i = 0; i < compatBones.Length; i++)
-        {
-            animationBoneToSkeleton[i] = nameToSkeletonIndex.TryGetValue(compatBones[i].Name, out var skeletonIndex) ? skeletonIndex : -1;
-        }
+        var animationBoneToSkeleton = Enumerable.Range(0, compatBones.Length).ToArray();
 
         var frameCount = Math.Max(1, sequence.NumFrames);
         for (var frameIndex = 0; frameIndex < frameCount; frameIndex++)
@@ -172,6 +165,13 @@ public static class UkxActorXCompatBuilder
     private static RuntimeVertex[] BuildVertices(UkxSkeletalMeshObject mesh)
     {
         var lod = mesh.LodModels[0];
+
+        if (HasStandardLodVertices(lod) && lod.VertInfluences.Length > 0)
+        {
+            var standardVertices = new List<RuntimeVertex>();
+            BuildStandardVertices(lod.Points, lod.Wedges, lod.Faces, lod.VertInfluences, standardVertices);
+            return standardVertices.ToArray();
+        }
 
         if (HasModernSectionVertices(lod))
         {

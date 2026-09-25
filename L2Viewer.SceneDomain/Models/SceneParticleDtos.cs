@@ -20,6 +20,9 @@ public sealed class SceneParticleEmitterData
     public SceneMeshEmitterLayerData[] MeshLayers { get; init; } = [];
     public SceneBeamEmitterLayerData[] BeamLayers { get; init; } = [];
     public SceneVertMeshEmitterLayerData[] VertMeshLayers { get; init; } = [];
+    public SceneParticleResourceReference[] ParticleResourceReferences => EmitterReferences
+        .Select(SceneParticleResourceReference.Parse)
+        .ToArray();
 }
 
 public abstract class SceneParticleLayerData
@@ -76,6 +79,10 @@ public sealed class SceneSpriteEmitterLayerData : SceneColorScaledParticleLayerD
     public bool UseRandomSubdivision { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
     public bool BlendBetweenSubdivisions { get; init; }
+    public SceneSurfaceResourceReference? SurfaceResourceReference =>
+        string.IsNullOrWhiteSpace(TextureReference) ? null : SceneSurfaceResourceReference.Parse(TextureReference);
+    public SceneMaterialBlendMode MaterialBlendMode =>
+        SceneMaterialBlendModeInterpreter.FromParticleDrawStyle(DrawStyle ?? 3);
 }
 
 public sealed class SceneMeshEmitterLayerData : SceneFadeInParticleLayerData
@@ -90,6 +97,8 @@ public sealed class SceneMeshEmitterLayerData : SceneFadeInParticleLayerData
     public UnrParticleSizeScale[] SizeScale { get; init; } = [];
     public UnrRangeVector? StartSizeRange { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
+    public SceneStaticMeshResourceReference? MeshResourceReference =>
+        string.IsNullOrWhiteSpace(StaticMeshReference) ? null : SceneStaticMeshResourceReference.Parse(StaticMeshReference);
 }
 
 public sealed class SceneBeamEmitterLayerData : SceneFadeInParticleLayerData
@@ -101,6 +110,9 @@ public sealed class SceneBeamEmitterLayerData : SceneFadeInParticleLayerData
     public UnrFloatRange? SphereRadiusRange { get; init; }
     public UnrRangeVector? StartLocationPolarRange { get; init; }
     public UnrRangeVector? StartSizeRange { get; init; }
+    public SceneSurfaceResourceReference? SurfaceResourceReference =>
+        string.IsNullOrWhiteSpace(TextureReference) ? null : SceneSurfaceResourceReference.Parse(TextureReference);
+    public SceneMaterialBlendMode MaterialBlendMode => SceneMaterialBlendMode.Additive;
 }
 
 public sealed class SceneVertMeshEmitterLayerData : SceneFadeInParticleLayerData
@@ -122,4 +134,6 @@ public sealed class SceneVertMeshEmitterLayerData : SceneFadeInParticleLayerData
     public UnrRangeVector? StartSizeRange { get; init; }
     public byte? DrawStyle { get; init; }
     public UnrRangeVector? StartVelocityRange { get; init; }
+    public SceneVertexMeshResourceReference? MeshResourceReference =>
+        string.IsNullOrWhiteSpace(VertexMeshReference) ? null : SceneVertexMeshResourceReference.Parse(VertexMeshReference);
 }

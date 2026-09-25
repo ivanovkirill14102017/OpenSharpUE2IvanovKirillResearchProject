@@ -735,7 +735,7 @@ public sealed class SceneBspRoomBuilder
             rootNode.PackagePath,
             material.RootPackageName,
             material.RootObjectName,
-            material.RootClassName);
+            material.RootClass.ToString());
     }
 
     private static string BuildMeshPartName(int materialRawReference, uint polyFlags, int clusterIndex)

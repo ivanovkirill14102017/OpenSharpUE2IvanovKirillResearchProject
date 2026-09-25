@@ -56,7 +56,7 @@ public static class MaterialGraphResolver
 
         return new ResolvedMaterialGraph(
             $"{rootRef.PackageName}.{rootRef.ObjectName}",
-            rootRef.ClassName,
+            MaterialGraphRootClassParser.Parse(rootRef.ClassName),
             rootRef.ObjectName,
             rootRef.PackageName,
             nodes,

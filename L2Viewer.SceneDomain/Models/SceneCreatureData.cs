@@ -15,7 +15,7 @@ public sealed class SceneCreatureSpawnData
     public required int LeftHandItemId { get; init; }
     public required SceneResourceLocation ActorClassResource { get; init; }
     public required SceneResourceLocation MeshResource { get; init; }
-    public required SceneResourceLocation[] TextureResources { get; init; }
+    public required SceneResourceLocation[] SurfaceResources { get; init; }
     public SceneCreatureAttachedEffectData[] AttachedEffects { get; init; } = [];
     public required int Heading { get; init; }
     public required int SpawnCount { get; init; }
@@ -24,6 +24,10 @@ public sealed class SceneCreatureSpawnData
     public required float CollisionRadius { get; init; }
     public required float CollisionHeight { get; init; }
     public required Vector3 Position { get; init; }
+    public SceneSkeletalMeshResourceReference SkeletalMeshReference => new(MeshResource.ResourceId);
+    public SceneSurfaceResourceReference[] SurfaceResourceReferences => SurfaceResources
+        .Select(x => new SceneSurfaceResourceReference(x.ResourceId))
+        .ToArray();
 }
 
 public sealed class SceneCreatureAttachedEffectData
@@ -38,6 +42,7 @@ public sealed class SceneCreatureAttachedEffectData
     public Vector3 RelativeRotationUnrealRaw { get; init; }
     public Vector3 RelativeRotationEulerDegrees { get; init; }
     public required SceneParticleEmitterData Emitter { get; init; }
+    public SceneParticleResourceReference ParticleReference => new(EffectResource.ResourceId);
 }
 
 public sealed class SceneCreatureVisualData

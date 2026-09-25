@@ -9,6 +9,7 @@ public sealed class SceneResourceLocation
     public required string PackagePath { get; init; }
     public required string ClientRelativePath { get; init; }
     public required string Uri { get; init; }
+    public SceneResourceId ResourceId => SceneResourceId.Create(PackageName, ObjectName);
 }
 
 public sealed class SceneResourceReference
@@ -17,4 +18,5 @@ public sealed class SceneResourceReference
     public required string ClassName { get; init; }
     public required string PackageName { get; init; }
     public required string ObjectName { get; init; }
+    public SceneResourceId ResourceId => SceneResourceId.Create(PackageName, ObjectName);
 }

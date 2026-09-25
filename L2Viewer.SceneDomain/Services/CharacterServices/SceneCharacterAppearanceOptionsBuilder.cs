@@ -39,6 +39,7 @@ public sealed class SceneCharacterAppearanceOptionsBuilder
             .Select((texture, index) => new SceneCharacterFaceOptionData
             {
                 Id = index,
+                Binding = SceneCharacterPartBinding.RigidHead,
                 MeshResources = BuildReferences(entry.Face.Meshes, UnrealClassNames.SkeletalMesh),
                 TextureResources = BuildReferences([texture], UnrealClassNames.Texture)
             })

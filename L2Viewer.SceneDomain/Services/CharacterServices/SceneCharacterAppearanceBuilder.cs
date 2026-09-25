@@ -99,6 +99,7 @@ public sealed class SceneCharacterAppearanceBuilder
         return new SceneCharacterResolvedPartData
         {
             Slot = SceneCharacterPaperdollSlot.Face,
+            Binding = faceOption.Binding,
             ItemId = null,
             IsBasePart = true,
             MeshResources = faceOption.MeshResources,

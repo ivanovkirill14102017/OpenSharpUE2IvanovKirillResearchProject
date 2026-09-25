@@ -56,9 +56,9 @@ public sealed class SceneCreatureMapBuilder
 
             var actorClass = dataset.GetResourceLocation(visual.Class, "Class", spawn.npc_templateid, spawn.id);
             var mesh = dataset.GetResourceLocation(visual.Mesh, "SkeletalMesh", spawn.npc_templateid, spawn.id);
-            var textures = dataset.GetResourceLocations(
+            var surfaces = dataset.GetResourceLocations(
                 visual.Textures1.Concat(visual.Textures2).Distinct(StringComparer.OrdinalIgnoreCase),
-                "Texture",
+                "Surface",
                 spawn.npc_templateid,
                 spawn.id);
             var displayName = string.IsNullOrWhiteSpace(npcName.Name) ? npc.name : npcName.Name;
@@ -71,7 +71,7 @@ public sealed class SceneCreatureMapBuilder
                     spawn.id,
                     spawn.npc_templateid,
                     displayName),
-                VisualKey = BuildVisualKey(actorClass.Reference, mesh.Reference, textures.Select(x => x.Reference)),
+                VisualKey = BuildVisualKey(actorClass.Reference, mesh.Reference, surfaces.Select(x => x.Reference)),
                 SpawnId = spawn.id,
                 TemplateId = spawn.npc_templateid,
                 SpawnLocationKey = spawn.location,
@@ -81,7 +81,7 @@ public sealed class SceneCreatureMapBuilder
                 LeftHandItemId = DecimalToInt32(npc.lhand),
                 ActorClassResource = actorClass,
                 MeshResource = mesh,
-                TextureResources = textures,
+                SurfaceResources = surfaces,
                 AttachedEffects = classEffectResolver.Resolve(actorClass),
                 Heading = spawn.heading,
                 SpawnCount = spawn.count,

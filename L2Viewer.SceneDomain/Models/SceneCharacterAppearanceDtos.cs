@@ -59,6 +59,12 @@ public enum SceneCharacterPaperdollSlot
     DoubleHair = 17
 }
 
+public enum SceneCharacterPartBinding
+{
+    MeshSkinning,
+    RigidHead
+}
+
 public sealed class SceneCharacterAppearanceRequest
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
@@ -91,6 +97,7 @@ public sealed class SceneCharacterAppearanceData
 public sealed class SceneCharacterResolvedPartData
 {
     public required SceneCharacterPaperdollSlot Slot { get; init; }
+    public SceneCharacterPartBinding Binding { get; init; }
     public int? ItemId { get; init; }
     public required bool IsBasePart { get; init; }
     public required SceneResourceReference[] MeshResources { get; init; }

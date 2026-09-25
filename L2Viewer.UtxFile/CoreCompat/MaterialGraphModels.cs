@@ -1,5 +1,40 @@
 ﻿namespace L2Viewer.UtxFile;
 
+public enum MaterialGraphRootClass
+{
+    ColorModifier,
+    Combiner,
+    Cubemap,
+    FadeColor,
+    FinalBlend,
+    FireTexture,
+    GlowModifier,
+    Shader,
+    TexCoordSource,
+    TexEnvMap,
+    TexOscillator,
+    TexOscillatorTriggered,
+    TexPanner,
+    TexRotator,
+    TexScaler,
+    Texture,
+    WetTexture
+}
+
+public static class MaterialGraphRootClassParser
+{
+    public static MaterialGraphRootClass Parse(string className)
+    {
+        if (Enum.TryParse<MaterialGraphRootClass>(className, true, out var result) &&
+            Enum.IsDefined(typeof(MaterialGraphRootClass), result))
+        {
+            return result;
+        }
+
+        throw new InvalidDataException($"Unsupported Unreal material root class '{className}'.");
+    }
+}
+
 public sealed record MaterialBooleanParameter(string Name, bool Value);
 
 public sealed record MaterialNumericParameter(string Name, double Value, string NumericKind);
@@ -37,7 +72,7 @@ public sealed record MaterialGraphNode(
 
 public sealed record ResolvedMaterialGraph(
     string RootReference,
-    string RootClassName,
+    MaterialGraphRootClass RootClass,
     string RootObjectName,
     string RootPackageName,
     IReadOnlyList<MaterialGraphNode> Nodes,

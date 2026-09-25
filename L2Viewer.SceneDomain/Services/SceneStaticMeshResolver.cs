@@ -256,7 +256,7 @@ public sealed class SceneStaticMeshResolver
             rootNode.PackagePath,
             material.RootPackageName,
             material.RootObjectName,
-            material.RootClassName);
+            material.RootClass.ToString());
     }
 
     private SceneResourceLocation? ResolvePrimaryTextureResource(IReadOnlyList<ResolvedMaterialGraph?> materials, string? textureReference)
