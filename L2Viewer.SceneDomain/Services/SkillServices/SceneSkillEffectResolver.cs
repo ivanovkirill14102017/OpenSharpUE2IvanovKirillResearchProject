@@ -1,5 +1,5 @@
-using System.Text;
 using L2Viewer.SceneDomain.Models;
+using L2Viewer.PackageCore;
 using L2Viewer.SceneDomain.Services.MaterialServices;
 using L2Viewer.SceneDomain.Services.Utility;
 using L2Viewer.UnrFile;
@@ -11,80 +11,106 @@ internal static class SceneSkillEffectResolver
     public static IReadOnlyList<SceneSkillVisualEffectData> ResolveEffects(
         string clientRoot,
         string lineageEffectPath,
+        string skillVisualPath,
         IReadOnlyList<SceneSkillLevelData> levels,
-        IReadOnlyList<SceneSkillNameEntryData> names,
-        IReadOnlyList<SceneSkillSoundData> sounds,
         ICollection<string> warnings)
     {
         var rawStages = UnrSkillEffectPackageReader.ReadStages(lineageEffectPath);
+        var stagesByClass = rawStages.ToDictionary(x => x.ObjectName, StringComparer.OrdinalIgnoreCase);
+        var classSupers = UnrClassEffectPackageReader.ReadScriptClasses(lineageEffectPath)
+            .Concat(UnrClassEffectPackageReader.ReadScriptClasses(Path.Combine(clientRoot, "system", "Engine.u")))
+            .ToDictionary(x => x.ObjectName, x => x.SuperClassName, StringComparer.OrdinalIgnoreCase);
+        var actionSets = UnrSkillVisualActionPackageReader.Read(skillVisualPath)
+            .ToDictionary(x => (x.GroupName.ToLowerInvariant(), x.ObjectName.ToLowerInvariant()));
         var resourcePackageIndex = ScenePackageIndexer.BuildResourcePackageIndex(clientRoot);
         var staticMeshResolver = new SceneStaticMeshResolver(clientRoot, new BspTextureManager(clientRoot));
 
         var effects = new List<SceneSkillVisualEffectData>();
-        foreach (var candidate in BuildEffectCandidates(levels, names, sounds))
+        var nextStageOrder = 0;
+        foreach (var token in levels.Select(x => x.DescriptionToken).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var stages = rawStages
-                .Where(x => TryExtractFamilyStageKey(x.ObjectName, candidate.Stem) is not null)
-                .Select(x => AdaptStage(clientRoot, lineageEffectPath, x, resourcePackageIndex, staticMeshResolver, warnings))
-                .ToArray();
-            if (stages.Length == 0)
+            var parts = token!.Split('.');
+            if (!parts[0].Is("skill"))
             {
                 continue;
             }
 
+            if (parts.Length != 3 || string.IsNullOrWhiteSpace(parts[1]) || string.IsNullOrWhiteSpace(parts[2]))
+            {
+                throw new PackageReadException($"Invalid skill visual reference '{token}' in skillgrp.dat.");
+            }
+
+            if (!actionSets.TryGetValue((parts[1].ToLowerInvariant(), parts[2].ToLowerInvariant()), out var actionSet))
+            {
+                throw new PackageReadException($"Skill visual '{token}' was not found in '{skillVisualPath}'.");
+            }
+
+            var stages = new List<SceneSkillVisualStageData>();
+            foreach (var action in actionSet.Actions.OrderBy(x => ResolvePhase(x.Phase)).ThenBy(x => x.PhaseIndex))
+            {
+                stages.Add(ResolveActionStage(clientRoot, lineageEffectPath, token, action, actionSet.FlyingTime, nextStageOrder++, stagesByClass, classSupers, resourcePackageIndex, staticMeshResolver, warnings));
+            }
+
             effects.Add(new SceneSkillVisualEffectData
             {
-                Stem = candidate.Stem,
-                Source = candidate.Source,
+                Stem = $"{actionSet.GroupName}.{actionSet.ObjectName}",
                 Stages = stages
             });
         }
 
         if (effects.Count == 0)
         {
-            warnings.Add("No matching LineageEffect families were resolved from skill names or sound effect aliases.");
+            throw new PackageReadException("No skill.<group>.<object> visual reference was present in skillgrp.dat for the requested skill.");
         }
 
         return effects;
     }
 
-    private static IReadOnlyList<(string Stem, string Source)> BuildEffectCandidates(
-        IReadOnlyList<SceneSkillLevelData> levels,
-        IReadOnlyList<SceneSkillNameEntryData> names,
-        IReadOnlyList<SceneSkillSoundData> sounds)
+    private static SceneSkillVisualStageData ResolveActionStage(
+        string clientRoot,
+        string lineageEffectPath,
+        string visualReference,
+        UnrSkillVisualAction action,
+        float? flyingTime,
+        int stageOrder,
+        IReadOnlyDictionary<string, UnrSkillEffectStageObject> stagesByClass,
+        IReadOnlyDictionary<string, string?> classSupers,
+        IReadOnlyDictionary<string, string> resourcePackageIndex,
+        SceneStaticMeshResolver staticMeshResolver,
+        ICollection<string> warnings)
     {
-        var ordered = new List<(string Stem, string Source)>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var normalizedName in names
-                     .Select(x => NormalizeSkillStem(x.Name))
-                     .Where(static x => !string.IsNullOrWhiteSpace(x)))
+        if (!action.ActionClassName.Is("SkillAction_LocateEffect"))
         {
-            AddCandidate(normalizedName!, "skill-name", ordered, seen);
+            throw new PackageReadException($"Unsupported skill action '{action.ActionClassName}' in '{visualReference}'.");
         }
 
-        foreach (var soundStem in sounds
-                     .SelectMany(x => x.SpellEffectSounds.Concat(x.ShotEffectSounds).Concat(x.ExpEffectSounds))
-                     .Select(ExtractEffectStemFromSound)
-                     .Where(static x => !string.IsNullOrWhiteSpace(x)))
+        if (string.IsNullOrWhiteSpace(action.EffectClassName))
         {
-            AddCandidate(soundStem!, "sound-effect", ordered, seen);
+            throw new PackageReadException($"Action {action.ExportIndex} in '{visualReference}' has no EffectClass.");
         }
 
-        foreach (var descriptionLinkStem in levels
-                     .SelectMany(x => ResolveDescriptionLinkedStems(x.DescriptionToken, names, sounds))
-                     .Where(static x => !string.IsNullOrWhiteSpace(x)))
+        if (!action.EffectPackageName.Is("LineageEffect"))
         {
-            AddCandidate(descriptionLinkStem!, "description-token", ordered, seen);
+            throw new PackageReadException($"Effect class '{action.EffectPackageName}.{action.EffectClassName}' in '{visualReference}' is outside LineageEffect.u.");
         }
 
-        return ordered;
+        if (!stagesByClass.TryGetValue(action.EffectClassName, out var rawStage))
+        {
+            throw new PackageReadException($"Effect class '{action.EffectClassName}' referenced by '{visualReference}' was not parsed from LineageEffect.u.");
+        }
+
+        return AdaptStage(clientRoot, lineageEffectPath, visualReference, rawStage, action, stageOrder, IsProjectile(rawStage.ObjectName, classSupers), flyingTime, resourcePackageIndex, staticMeshResolver, warnings);
     }
 
     private static SceneSkillVisualStageData AdaptStage(
         string clientRoot,
         string lineageEffectPath,
+        string visualReference,
         UnrSkillEffectStageObject stage,
+        UnrSkillVisualAction action,
+        int stageOrder,
+        bool isProjectile,
+        float? flyingTime,
         IReadOnlyDictionary<string, string> resourcePackageIndex,
         SceneStaticMeshResolver staticMeshResolver,
         ICollection<string> warnings)
@@ -111,16 +137,79 @@ internal static class SceneSkillEffectResolver
 
         return new SceneSkillVisualStageData
         {
-            StageKey = stage.StageKey,
-            StageOrder = stage.StageOrder,
+            StageOrder = stageOrder,
             ObjectName = stage.ObjectName,
             SuperClassName = stage.SuperClassName,
+            IsProjectile = isProjectile,
+            Placement = new SceneSkillVisualPlacementData
+            {
+                VisualReference = visualReference,
+                Phase = ResolvePhase(action.Phase),
+                SpecificStage = action.SpecificStage,
+                AttachOn = ResolveAttachMethod(action.AttachOn),
+                AttachBoneName = action.AttachBoneName,
+                Offset = action.Offset ?? default,
+                SpawnOnTarget = action.SpawnOnTarget ?? false,
+                RelativeToCylinder = action.RelativeToCylinder ?? false,
+                UseCharacterRotation = action.UseCharacterRotation ?? false,
+                Absolute = action.Absolute ?? false,
+                OnMultiTarget = action.OnMultiTarget ?? false,
+                SizeScale = action.SizeScale ?? false,
+                SpawnDelay = action.SpawnDelay ?? 0f,
+                FlyingTime = flyingTime
+            },
             StageReference = stageReference,
             StageResource = stageResource,
             EmitterReferences = layers.Select(x => x.LayerReference).ToArray(),
             EmitterResources = layers.Select(x => x.LayerResource).ToArray(),
             Layers = layers
         };
+    }
+
+    private static bool IsProjectile(string className, IReadOnlyDictionary<string, string?> classSupers)
+    {
+        var current = className;
+        for (var i = 0; i < 64; i++)
+        {
+            if (current.Equals("NSkillProjectile", StringComparison.OrdinalIgnoreCase) ||
+                current.Equals("NProjectile", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!classSupers.TryGetValue(current, out var parent) || string.IsNullOrWhiteSpace(parent))
+            {
+                return false;
+            }
+
+            current = parent;
+        }
+
+        throw new PackageReadException($"Skill class inheritance cycle near '{className}'.");
+    }
+
+    private static SceneSkillVisualPhase ResolvePhase(UnrSkillVisualActionPhase phase)
+    {
+        return phase switch
+        {
+            UnrSkillVisualActionPhase.CastingActions => SceneSkillVisualPhase.Casting,
+            UnrSkillVisualActionPhase.ChannelingActions => SceneSkillVisualPhase.Channeling,
+            UnrSkillVisualActionPhase.PreshotActions => SceneSkillVisualPhase.Preshot,
+            UnrSkillVisualActionPhase.ShotActions => SceneSkillVisualPhase.Shot,
+            UnrSkillVisualActionPhase.ExplosionActions => SceneSkillVisualPhase.Explosion,
+            _ => throw new PackageReadException($"Unsupported skill visual action phase '{phase}'.")
+        };
+    }
+
+    private static SceneSkillEffectAttachMethod ResolveAttachMethod(byte? raw)
+    {
+        var value = raw ?? 0;
+        if (value > (byte)SceneSkillEffectAttachMethod.LeftFoot)
+        {
+            throw new PackageReadException($"Unsupported SkillAction AttachOn={value}.");
+        }
+
+        return (SceneSkillEffectAttachMethod)value;
     }
 
     private static SceneSkillVisualLayerData AdaptLayer(
@@ -224,103 +313,6 @@ internal static class SceneSkillEffectResolver
             })
             .ToArray();
     }
-    private static IEnumerable<string?> ResolveDescriptionLinkedStems(
-        string? descriptionToken,
-        IReadOnlyList<SceneSkillNameEntryData> names,
-        IReadOnlyList<SceneSkillSoundData> sounds)
-    {
-        if (string.IsNullOrWhiteSpace(descriptionToken) || !descriptionToken.StartsWith("skill.el.", StringComparison.OrdinalIgnoreCase))
-        {
-            yield break;
-        }
-
-        foreach (var stem in names.Select(x => NormalizeSkillStem(x.Name)).Where(static x => !string.IsNullOrWhiteSpace(x)))
-        {
-            yield return stem;
-        }
-
-        foreach (var stem in sounds
-                     .SelectMany(x => x.SpellEffectSounds.Concat(x.ShotEffectSounds).Concat(x.ExpEffectSounds))
-                     .Select(ExtractEffectStemFromSound)
-                     .Where(static x => !string.IsNullOrWhiteSpace(x)))
-        {
-            yield return stem;
-        }
-    }
-
-    private static void AddCandidate(string value, string source, ICollection<(string Stem, string Source)> ordered, ISet<string> seen)
-    {
-        if (seen.Add(value))
-        {
-            ordered.Add((value, source));
-        }
-    }
-
-    private static string? NormalizeSkillStem(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        var builder = new StringBuilder(value.Length);
-        var lastWasUnderscore = false;
-        foreach (var c in value.Trim().ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(c))
-            {
-                builder.Append(c);
-                lastWasUnderscore = false;
-                continue;
-            }
-
-            if (!lastWasUnderscore)
-            {
-                builder.Append('_');
-                lastWasUnderscore = true;
-            }
-        }
-
-        return builder.ToString().Trim('_');
-    }
-
-    private static string? ExtractEffectStemFromSound(string soundReference)
-    {
-        if (string.IsNullOrWhiteSpace(soundReference))
-        {
-            return null;
-        }
-
-        var token = soundReference[(soundReference.LastIndexOf('.') + 1)..].Trim().ToLowerInvariant();
-        foreach (var suffix in new[] { "_shot", "_explotion", "_explosion", "_cast", "_hit", "_start", "_end" })
-        {
-            if (token.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) && token.Length > suffix.Length)
-            {
-                return token[..^suffix.Length];
-            }
-        }
-
-        return null;
-    }
-
-    private static string? TryExtractFamilyStageKey(string objectName, string stem)
-    {
-        if (string.IsNullOrWhiteSpace(objectName) || string.IsNullOrWhiteSpace(stem))
-        {
-            return null;
-        }
-
-        var suffixIndex = objectName.LastIndexOf('_');
-        if (suffixIndex <= 0 || suffixIndex >= objectName.Length - 1)
-        {
-            return null;
-        }
-
-        var stageKey = objectName[(suffixIndex + 1)..];
-        var prefix = objectName[..suffixIndex];
-        return prefix.EndsWith($"_{stem}", StringComparison.OrdinalIgnoreCase) ? stageKey : null;
-    }
-
     private static string? ToReferenceText(UnrFileObjectReference? reference)
     {
         if (reference is null)

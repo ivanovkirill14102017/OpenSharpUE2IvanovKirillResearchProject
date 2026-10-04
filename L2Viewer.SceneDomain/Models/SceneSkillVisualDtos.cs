@@ -18,7 +18,6 @@ public sealed class SceneSkillVisualData
 public sealed class SceneSkillVisualEffectData
 {
     public required string Stem { get; init; }
-    public required string Source { get; init; }
     public required IReadOnlyList<SceneSkillVisualStageData> Stages { get; init; }
 }
 
@@ -85,15 +84,55 @@ public sealed class SceneMobSkillVisualData
 
 public sealed class SceneSkillVisualStageData
 {
-    public required string StageKey { get; init; }
     public required int StageOrder { get; init; }
     public required string ObjectName { get; init; }
     public string? SuperClassName { get; init; }
+    public required bool IsProjectile { get; init; }
+    public required SceneSkillVisualPlacementData Placement { get; init; }
     public required SceneResourceReference StageReference { get; init; }
     public required SceneResourceLocation StageResource { get; init; }
     public required IReadOnlyList<SceneResourceReference> EmitterReferences { get; init; }
     public required IReadOnlyList<SceneResourceLocation> EmitterResources { get; init; }
     public required IReadOnlyList<SceneSkillVisualLayerData> Layers { get; init; }
+}
+
+public sealed class SceneSkillVisualPlacementData
+{
+    public required string VisualReference { get; init; }
+    public required SceneSkillVisualPhase Phase { get; init; }
+    public required int SpecificStage { get; init; }
+    public required SceneSkillEffectAttachMethod AttachOn { get; init; }
+    public string? AttachBoneName { get; init; }
+    public required System.Numerics.Vector3 Offset { get; init; }
+    public required bool SpawnOnTarget { get; init; }
+    public required bool RelativeToCylinder { get; init; }
+    public required bool UseCharacterRotation { get; init; }
+    public required bool Absolute { get; init; }
+    public required bool OnMultiTarget { get; init; }
+    public required bool SizeScale { get; init; }
+    public required float SpawnDelay { get; init; }
+    public float? FlyingTime { get; init; }
+}
+
+public enum SceneSkillVisualPhase
+{
+    Casting = 0,
+    Channeling = 1,
+    Preshot = 2,
+    Shot = 3,
+    Explosion = 4
+}
+
+public enum SceneSkillEffectAttachMethod : byte
+{
+    None = 0,
+    RightHand = 1,
+    LeftHand = 2,
+    BoneSpecified = 3,
+    AliasSpecified = 4,
+    Trail = 5,
+    RightFoot = 6,
+    LeftFoot = 7
 }
 
 public sealed class SceneSkillVisualLayerData

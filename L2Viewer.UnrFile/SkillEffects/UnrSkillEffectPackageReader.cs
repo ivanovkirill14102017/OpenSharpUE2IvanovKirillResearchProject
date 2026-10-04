@@ -2,8 +2,6 @@ namespace L2Viewer.UnrFile;
 
 public static class UnrSkillEffectPackageReader
 {
-    private static readonly string[] OrderedStageKeys = ["pr", "ca", "cs", "co", "fl", "ta", "to", "0", "1", "2", "3"];
-
     public static IReadOnlyList<UnrSkillEffectStageObject> ReadStages(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -19,11 +17,6 @@ public static class UnrSkillEffectPackageReader
         var stages = new List<UnrSkillEffectStageObject>();
         foreach (var emitterClass in UnrClassEffectPackageReader.ReadEmitterClasses(path))
         {
-            if (!TryExtractStageMetadata(emitterClass.ObjectName, out var stageKey, out var stageOrder))
-            {
-                continue;
-            }
-
             var childLayers = emitterClass.Layers
                 .Select(TryAdaptLayer)
                 .Where(static x => x is not null)
@@ -40,16 +33,11 @@ public static class UnrSkillEffectPackageReader
                 ObjectName = emitterClass.ObjectName,
                 DeclaredClassName = nameof(UnrEmitterClassObject),
                 SuperClassName = emitterClass.SuperClassName,
-                StageKey = stageKey,
-                StageOrder = stageOrder,
                 Layers = childLayers
             });
         }
 
-        return stages
-            .OrderBy(x => x.StageOrder)
-            .ThenBy(x => x.ObjectName, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        return stages.ToArray();
     }
 
     private static UnrSkillEffectLayerObject? TryAdaptLayer(UnrFileObject layer)
@@ -186,38 +174,4 @@ public static class UnrSkillEffectPackageReader
         };
     }
 
-    private static bool TryExtractStageMetadata(string objectName, out string stageKey, out int stageOrder)
-    {
-        stageKey = string.Empty;
-        stageOrder = int.MaxValue;
-        if (string.IsNullOrWhiteSpace(objectName))
-        {
-            return false;
-        }
-
-        var suffixIndex = objectName.LastIndexOf('_');
-        if (suffixIndex <= 0 || suffixIndex >= objectName.Length - 1)
-        {
-            return false;
-        }
-
-        stageKey = objectName[(suffixIndex + 1)..];
-        stageOrder = GetStageOrder(stageKey);
-        return stageOrder != int.MaxValue;
-    }
-
-    private static int GetStageOrder(string stageKey)
-    {
-        for (var i = 0; i < OrderedStageKeys.Length; i++)
-        {
-            if (OrderedStageKeys[i].Is(stageKey))
-            {
-                return i;
-            }
-        }
-
-        return int.TryParse(stageKey, out var numericStage)
-            ? OrderedStageKeys.Length + numericStage
-            : int.MaxValue;
-    }
 }

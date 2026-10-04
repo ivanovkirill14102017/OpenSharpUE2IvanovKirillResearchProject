@@ -22,6 +22,7 @@ public sealed class SceneSkillVisualBuilder
         var skillSoundPath = Path.Combine(systemRoot, "skillsoundgrp.dat");
         var mobSkillAnimPath = Path.Combine(systemRoot, "MobSkillAnimgrp.dat");
         var lineageEffectPath = Path.Combine(systemRoot, "LineageEffect.u");
+        var skillVisualPath = Path.Combine(fullClientRoot, "animations", "skill.usk");
 
         var names = ReadOptional(skillNamePath, warnings, () => DatFileReader.ReadDocument<SkillNameDatDocument>(skillNamePath).Entries
             .Where(x => x.SkillId == skillId)
@@ -89,15 +90,17 @@ public sealed class SceneSkillVisualBuilder
             })
             .ToArray());
 
-        IReadOnlyList<SceneSkillVisualEffectData> effects = [];
-        if (File.Exists(lineageEffectPath))
+        if (!File.Exists(lineageEffectPath))
         {
-            effects = SceneSkillEffectResolver.ResolveEffects(fullClientRoot, lineageEffectPath, levels, names, sounds, warnings);
+            throw new FileNotFoundException("Skill effect package was not found.", lineageEffectPath);
         }
-        else
+
+        if (!File.Exists(skillVisualPath))
         {
-            warnings.Add($"Effect package was not found: '{lineageEffectPath}'.");
+            throw new FileNotFoundException("Skill visual action package was not found.", skillVisualPath);
         }
+
+        var effects = SceneSkillEffectResolver.ResolveEffects(fullClientRoot, lineageEffectPath, skillVisualPath, levels, warnings);
 
         var mobVisuals = SceneSkillMobVisualResolver.BuildMobVisuals(fullClientRoot, mobTriggers, warnings);
         var resolvedStems = effects.Select(x => x.Stem).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

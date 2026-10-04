@@ -5,8 +5,6 @@ public sealed class UnrSkillEffectStageObject
     public required string ObjectName { get; init; }
     public required string DeclaredClassName { get; init; }
     public string? SuperClassName { get; init; }
-    public required string StageKey { get; init; }
-    public required int StageOrder { get; init; }
     public required IReadOnlyList<UnrSkillEffectLayerObject> Layers { get; init; }
 }
 
