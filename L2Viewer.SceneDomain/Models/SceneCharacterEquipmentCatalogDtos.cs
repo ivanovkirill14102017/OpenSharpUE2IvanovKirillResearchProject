@@ -20,6 +20,18 @@ public enum SceneCharacterEquipmentBodyPart
     LeftRightHand
 }
 
+public enum SceneWeaponAnimationClass
+{
+    None,
+    Hand,
+    OneHanded,
+    TwoHanded,
+    Bow,
+    Dual,
+    Pole,
+    Fishing
+}
+
 public sealed class SceneCharacterEquipmentCatalogData
 {
     public required SceneCharacterBaseClass BaseClass { get; init; }
@@ -41,6 +53,9 @@ public sealed class SceneCharacterEquipmentCatalogItemData
     public required string DisplayName { get; init; }
     public required SceneCharacterEquipmentBodyPart BodyPart { get; init; }
     public required string BodyPartKey { get; init; }
+    public required uint RawWeaponType { get; init; }
+    public required uint RawHandness { get; init; }
+    public required SceneWeaponAnimationClass AnimationClass { get; init; }
     public required IReadOnlyList<SceneCharacterPaperdollSlot> PaperdollSlots { get; init; }
     public required IReadOnlyList<SceneCharacterPaperdollSlot> AppearanceSlots { get; init; }
     public required bool IsRenderableWithCurrentAppearanceBuilder { get; init; }

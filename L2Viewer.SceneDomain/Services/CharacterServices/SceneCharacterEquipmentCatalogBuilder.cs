@@ -87,7 +87,10 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
                 bodyPartMapping,
                 meshGroup.Value.Meshes,
                 meshGroup.Value.Textures,
-                UnrealClassNames.SkeletalMesh);
+                UnrealClassNames.SkeletalMesh,
+                0,
+                0,
+                SceneWeaponAnimationClass.None);
             AddItem(itemsBySlot, item, skeletalResources, warnings);
         }
 
@@ -111,7 +114,10 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
                 bodyPartMapping,
                 weaponEntry.WeaponMeshes,
                 weaponEntry.WeaponTextures,
-                UnrealClassNames.SkeletalMesh);
+                UnrealClassNames.SkeletalMesh,
+                weaponEntry.WeaponType,
+                weaponEntry.Handness,
+                ResolveAnimationClass(dbItem.ItemId, weaponEntry.WeaponType, weaponEntry.Handness, weaponEntry.BodyPart));
             AddItem(itemsBySlot, item, skeletalResources, warnings);
         }
 
@@ -291,7 +297,10 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
         BodyPartMapping bodyPartMapping,
         IEnumerable<string> meshReferences,
         IEnumerable<string> textureReferences,
-        string meshClassName)
+        string meshClassName,
+        uint rawWeaponType,
+        uint rawHandness,
+        SceneWeaponAnimationClass animationClass)
     {
         var meshResources = BuildReferences(meshReferences, meshClassName);
         var textureResources = BuildReferences(textureReferences, UnrealClassNames.Texture);
@@ -303,6 +312,9 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
             DisplayName = dbItem.DisplayName,
             BodyPart = bodyPartMapping.BodyPart,
             BodyPartKey = dbItem.BodyPartKey,
+            RawWeaponType = rawWeaponType,
+            RawHandness = rawHandness,
+            AnimationClass = animationClass,
             PaperdollSlots = bodyPartMapping.PaperdollSlots,
             AppearanceSlots = appearanceSlots,
             IsRenderableWithCurrentAppearanceBuilder = appearanceSlots.Count > 0 && (meshResources.Length > 0 || textureResources.Length > 0),
@@ -354,6 +366,23 @@ public sealed class SceneCharacterEquipmentCatalogBuilder
         public int item_id { get; set; }
         public string name { get; set; } = string.Empty;
         public string bodypart { get; set; } = string.Empty;
+    }
+
+    private static SceneWeaponAnimationClass ResolveAnimationClass(int itemId, uint weaponType, uint handness, uint bodyPart)
+    {
+        return (weaponType, handness, bodyPart) switch
+        {
+            (0, 0, 8) or (1, 0, 0) => SceneWeaponAnimationClass.None,
+            (0, 3, 7) or (0, 6, 7) or (5, 7, 14) or (7, 1, 7) => SceneWeaponAnimationClass.Hand,
+            (1, 1, 7 or 8 or 14) or (2, 1, 7 or 14) or (3, 1, 7 or 14) or (3, 6, 7) => SceneWeaponAnimationClass.OneHanded,
+            (0, 2, 14) or (1, 2, 14) or (2, 2 or 4, 7 or 14) => SceneWeaponAnimationClass.TwoHanded,
+            (6, 5, 14) => SceneWeaponAnimationClass.Bow,
+            (0, 3, 14) or (8, 3, 14) => SceneWeaponAnimationClass.Dual,
+            (4, 1 or 4, 14) => SceneWeaponAnimationClass.Pole,
+            (10, 4, 14) => SceneWeaponAnimationClass.Fishing,
+            _ => throw new InvalidDataException(
+                $"Item {itemId} has unsupported weapongrp.dat animation fields: WeaponType={weaponType}, Handness={handness}, BodyPart={bodyPart}.")
+        };
     }
 
     private readonly record struct EquipmentDbItem(int ItemId, string DisplayName, string BodyPartKey);
