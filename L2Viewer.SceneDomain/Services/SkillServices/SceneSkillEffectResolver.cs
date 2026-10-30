@@ -12,9 +12,20 @@ internal static class SceneSkillEffectResolver
         string clientRoot,
         string lineageEffectPath,
         string skillVisualPath,
+        int skillId,
         IReadOnlyList<SceneSkillLevelData> levels,
         ICollection<string> warnings)
     {
+        var visualTokens = levels.Select(x => x.DescriptionToken)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var hasLegacyVisual = NativeLegacySkillVisualCatalog.TryGet(skillId, out var legacyStages) && visualTokens.Length == 0;
+        if (visualTokens.Length == 0 && !hasLegacyVisual)
+        {
+            return [];
+        }
+
         var rawStages = UnrSkillEffectPackageReader.ReadStages(lineageEffectPath);
         var stagesByClass = rawStages.ToDictionary(x => x.ObjectName, StringComparer.OrdinalIgnoreCase);
         var classSupers = UnrClassEffectPackageReader.ReadScriptClasses(lineageEffectPath)
@@ -25,9 +36,48 @@ internal static class SceneSkillEffectResolver
         var resourcePackageIndex = ScenePackageIndexer.BuildResourcePackageIndex(clientRoot);
         var staticMeshResolver = new SceneStaticMeshResolver(clientRoot, new BspTextureManager(clientRoot));
 
+        if (hasLegacyVisual)
+        {
+            var legacyReference = $"native.skill.{skillId}";
+            var legacyResolvedStages = new List<SceneSkillVisualStageData>();
+            foreach (var legacyStage in legacyStages!)
+            {
+                if (!stagesByClass.TryGetValue(legacyStage.ClassName, out var rawStage))
+                {
+                    throw new PackageReadException($"Native skill visual class '{legacyStage.ClassName}' for skill {skillId} was not found in LineageEffect.u.");
+                }
+
+                var isProjectile = IsProjectile(rawStage.ObjectName, classSupers);
+                if (legacyStage.ReturnsToCaster && !isProjectile)
+                {
+                    throw new PackageReadException($"Native skill visual class '{legacyStage.ClassName}' for skill {skillId} is marked as a returning projectile but does not inherit NSkillProjectile.");
+                }
+
+                var placement = new SceneSkillVisualPlacementData
+                {
+                    VisualReference = legacyReference,
+                    Phase = legacyStage.Phase,
+                    SpecificStage = 0,
+                    AttachOn = SceneSkillEffectAttachMethod.None,
+                    Offset = default,
+                    SpawnOnTarget = legacyStage.SpawnOnTarget,
+                    RelativeToCylinder = false,
+                    UseCharacterRotation = false,
+                    Absolute = false,
+                    OnMultiTarget = false,
+                    SizeScale = false,
+                    SpawnDelay = 0f,
+                    ReturnsToCaster = legacyStage.ReturnsToCaster
+                };
+                legacyResolvedStages.Add(AdaptStage(clientRoot, lineageEffectPath, rawStage, placement, legacyResolvedStages.Count, isProjectile, resourcePackageIndex, staticMeshResolver, warnings));
+            }
+
+            return [new SceneSkillVisualEffectData { Stem = legacyReference, Stages = legacyResolvedStages }];
+        }
+
         var effects = new List<SceneSkillVisualEffectData>();
         var nextStageOrder = 0;
-        foreach (var token in levels.Select(x => x.DescriptionToken).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var token in visualTokens)
         {
             var parts = token!.Split('.');
             if (!parts[0].Is("skill"))
@@ -56,11 +106,6 @@ internal static class SceneSkillEffectResolver
                 Stem = $"{actionSet.GroupName}.{actionSet.ObjectName}",
                 Stages = stages
             });
-        }
-
-        if (effects.Count == 0)
-        {
-            throw new PackageReadException("No skill.<group>.<object> visual reference was present in skillgrp.dat for the requested skill.");
         }
 
         return effects;
@@ -99,18 +144,33 @@ internal static class SceneSkillEffectResolver
             throw new PackageReadException($"Effect class '{action.EffectClassName}' referenced by '{visualReference}' was not parsed from LineageEffect.u.");
         }
 
-        return AdaptStage(clientRoot, lineageEffectPath, visualReference, rawStage, action, stageOrder, IsProjectile(rawStage.ObjectName, classSupers), flyingTime, resourcePackageIndex, staticMeshResolver, warnings);
+        var placement = new SceneSkillVisualPlacementData
+        {
+            VisualReference = visualReference,
+            Phase = ResolvePhase(action.Phase),
+            SpecificStage = action.SpecificStage,
+            AttachOn = ResolveAttachMethod(action.AttachOn),
+            AttachBoneName = action.AttachBoneName,
+            Offset = action.Offset ?? default,
+            SpawnOnTarget = action.SpawnOnTarget ?? false,
+            RelativeToCylinder = action.RelativeToCylinder ?? false,
+            UseCharacterRotation = action.UseCharacterRotation ?? false,
+            Absolute = action.Absolute ?? false,
+            OnMultiTarget = action.OnMultiTarget ?? false,
+            SizeScale = action.SizeScale ?? false,
+            SpawnDelay = action.SpawnDelay ?? 0f,
+            FlyingTime = flyingTime
+        };
+        return AdaptStage(clientRoot, lineageEffectPath, rawStage, placement, stageOrder, IsProjectile(rawStage.ObjectName, classSupers), resourcePackageIndex, staticMeshResolver, warnings);
     }
 
     private static SceneSkillVisualStageData AdaptStage(
         string clientRoot,
         string lineageEffectPath,
-        string visualReference,
         UnrSkillEffectStageObject stage,
-        UnrSkillVisualAction action,
+        SceneSkillVisualPlacementData placement,
         int stageOrder,
         bool isProjectile,
-        float? flyingTime,
         IReadOnlyDictionary<string, string> resourcePackageIndex,
         SceneStaticMeshResolver staticMeshResolver,
         ICollection<string> warnings)
@@ -141,23 +201,7 @@ internal static class SceneSkillEffectResolver
             ObjectName = stage.ObjectName,
             SuperClassName = stage.SuperClassName,
             IsProjectile = isProjectile,
-            Placement = new SceneSkillVisualPlacementData
-            {
-                VisualReference = visualReference,
-                Phase = ResolvePhase(action.Phase),
-                SpecificStage = action.SpecificStage,
-                AttachOn = ResolveAttachMethod(action.AttachOn),
-                AttachBoneName = action.AttachBoneName,
-                Offset = action.Offset ?? default,
-                SpawnOnTarget = action.SpawnOnTarget ?? false,
-                RelativeToCylinder = action.RelativeToCylinder ?? false,
-                UseCharacterRotation = action.UseCharacterRotation ?? false,
-                Absolute = action.Absolute ?? false,
-                OnMultiTarget = action.OnMultiTarget ?? false,
-                SizeScale = action.SizeScale ?? false,
-                SpawnDelay = action.SpawnDelay ?? 0f,
-                FlyingTime = flyingTime
-            },
+            Placement = placement,
             StageReference = stageReference,
             StageResource = stageResource,
             EmitterReferences = layers.Select(x => x.LayerReference).ToArray(),

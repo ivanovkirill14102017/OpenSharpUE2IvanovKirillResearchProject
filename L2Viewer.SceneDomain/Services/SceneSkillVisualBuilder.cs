@@ -59,6 +59,11 @@ public sealed class SceneSkillVisualBuilder
             })
             .ToArray());
 
+        if (levels.Length == 0)
+        {
+            throw new L2Viewer.PackageCore.PackageReadException($"Skill {skillId} has no entry in skillgrp.dat.");
+        }
+
         var sounds = ReadOptional(skillSoundPath, warnings, () => DatFileReader.ReadDocument<SkillSoundGrpDatDocument>(skillSoundPath).Entries
             .Where(x => x.SkillId == skillId)
             .OrderBy(x => x.SkillLevel)
@@ -100,7 +105,7 @@ public sealed class SceneSkillVisualBuilder
             throw new FileNotFoundException("Skill visual action package was not found.", skillVisualPath);
         }
 
-        var effects = SceneSkillEffectResolver.ResolveEffects(fullClientRoot, lineageEffectPath, skillVisualPath, levels, warnings);
+        var effects = SceneSkillEffectResolver.ResolveEffects(fullClientRoot, lineageEffectPath, skillVisualPath, skillId, levels, warnings);
 
         var mobVisuals = SceneSkillMobVisualResolver.BuildMobVisuals(fullClientRoot, mobTriggers, warnings);
         var resolvedStems = effects.Select(x => x.Stem).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

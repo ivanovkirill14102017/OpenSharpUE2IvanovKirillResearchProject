@@ -105,6 +105,7 @@ public sealed class SceneSkillVisualPlacementData
     public string? AttachBoneName { get; init; }
     public required System.Numerics.Vector3 Offset { get; init; }
     public required bool SpawnOnTarget { get; init; }
+    public bool ReturnsToCaster { get; init; }
     public required bool RelativeToCylinder { get; init; }
     public required bool UseCharacterRotation { get; init; }
     public required bool Absolute { get; init; }
