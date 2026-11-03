@@ -68,7 +68,6 @@ public sealed class SceneSkyEnvironmentBuilder
             .SelectMany(model => model.Chunks.SelectMany(chunk => chunk.MeshSections.Select(section => new SceneSkyLayerData
             {
                 StableName = $"{model.StableName}_{chunk.StableName}_{section.StableName}",
-                Kind = ClassifyLayer(section.MaterialObjectName ?? section.MaterialReference),
                 ModelExportIndex = model.ExportIndex,
                 ModelStableName = model.StableName,
                 ChunkIndex = chunk.ChunkIndex,
@@ -113,21 +112,6 @@ public sealed class SceneSkyEnvironmentBuilder
             .ThenBy(x => x.MaterialReference, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.PolyFlags)
             .ToArray();
-    }
-
-    private static SceneSkyLayerKind ClassifyLayer(string? materialName)
-    {
-        if (string.IsNullOrWhiteSpace(materialName))
-        {
-            return SceneSkyLayerKind.Other;
-        }
-
-        if (materialName.Contains("cloud", StringComparison.OrdinalIgnoreCase)) return SceneSkyLayerKind.Cloud;
-        if (materialName.Contains("haze", StringComparison.OrdinalIgnoreCase)) return SceneSkyLayerKind.Haze;
-        if (materialName.Contains("star", StringComparison.OrdinalIgnoreCase)) return SceneSkyLayerKind.Stars;
-        if (materialName.Contains("sky", StringComparison.OrdinalIgnoreCase) ||
-            materialName.Contains("background", StringComparison.OrdinalIgnoreCase)) return SceneSkyLayerKind.Background;
-        return SceneSkyLayerKind.Other;
     }
 
     private static SceneSkySourceReferenceData[] BuildSourceReferences(

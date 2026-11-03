@@ -117,9 +117,13 @@ public static class MaterialHeuristics
                     hasAnimatedTextureFlipbookHint = true;
                     hasFrameAnimationClassHint = true;
                 }
-                else if (numeric.Name.Is("FrameBufferBlending") ||
-                         numeric.Name.Is("OutputBlending") ||
-                         numeric.Name.Is("BlendMode"))
+                else if (numeric.Name.Is("OutputBlending"))
+                {
+                    if (!node.ClassName.Is("Shader"))
+                        throw new InvalidDataException($"OutputBlending belongs to an unexpected material class: {node.ClassName}.");
+                    blendModeHint = ResolveShaderOutputBlending((int)numeric.Value);
+                }
+                else if (numeric.Name.Is("FrameBufferBlending") || numeric.Name.Is("BlendMode"))
                 {
                     blendModeHint = ResolveBlendModeHintFromNumeric((int)numeric.Value, blendModeHint);
                 }
@@ -127,9 +131,13 @@ public static class MaterialHeuristics
 
             foreach (var text in node.TextParameters)
             {
-                if (text.Name.Is("FrameBufferBlending") ||
-                    text.Name.Is("OutputBlending") ||
-                    text.Name.Is("BlendMode"))
+                if (text.Name.Is("OutputBlending"))
+                {
+                    if (!node.ClassName.Is("Shader"))
+                        throw new InvalidDataException($"OutputBlending belongs to an unexpected material class: {node.ClassName}.");
+                    blendModeHint = ResolveShaderOutputBlending(text.Text);
+                }
+                else if (text.Name.Is("FrameBufferBlending") || text.Name.Is("BlendMode"))
                 {
                     blendModeHint = ResolveBlendModeHintFromText(text.Text, blendModeHint);
                 }
@@ -225,6 +233,24 @@ public static class MaterialHeuristics
 
         return PromoteBlendMode(current, candidate);
     }
+
+    private static MaterialBlendModeHint ResolveShaderOutputBlending(int value) => value switch
+    {
+        0 => MaterialBlendModeHint.Opaque,
+        1 => MaterialBlendModeHint.Masked,
+        2 => MaterialBlendModeHint.Modulated,
+        3 => MaterialBlendModeHint.Translucent,
+        _ => throw new NotSupportedException($"Unsupported Shader.OutputBlending value: {value}.")
+    };
+
+    private static MaterialBlendModeHint ResolveShaderOutputBlending(string value) => value.Trim() switch
+    {
+        "OB_Normal" => MaterialBlendModeHint.Opaque,
+        "OB_Masked" => MaterialBlendModeHint.Masked,
+        "OB_Modulate" => MaterialBlendModeHint.Modulated,
+        "OB_Translucent" => MaterialBlendModeHint.Translucent,
+        _ => throw new NotSupportedException($"Unsupported Shader.OutputBlending value: {value}.")
+    };
 
     private static MaterialBlendModeHint ResolveBlendModeHintFromText(string text, MaterialBlendModeHint current)
     {

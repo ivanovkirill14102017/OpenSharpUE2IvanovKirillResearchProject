@@ -126,19 +126,9 @@ public sealed class SceneSkyEnvironmentData
     public required SceneSkySurfaceMaterialData[] SurfaceMaterials { get; init; }
 }
 
-public enum SceneSkyLayerKind
-{
-    Other = 0,
-    Background,
-    Haze,
-    Cloud,
-    Stars
-}
-
 public sealed class SceneSkyLayerData
 {
     public required string StableName { get; init; }
-    public required SceneSkyLayerKind Kind { get; init; }
     public required int ModelExportIndex { get; init; }
     public required string ModelStableName { get; init; }
     public required int ChunkIndex { get; init; }

@@ -136,9 +136,21 @@ public static class Lineage2FileProfiles
         return wrapper switch
         {
             "raw" => bytes,
+            "Lineage2Ver111" => DecodeVer111(bytes, prefixLength),
             "Lineage2Ver413" => DecodeVer413(bytes, prefixLength),
             _ => throw new NotSupportedException($"Wrapper '{wrapper}' is not supported for generic decoding.")
         };
+    }
+
+    private static byte[] DecodeVer111(byte[] bytes, int prefixLength)
+    {
+        var decoded = new byte[bytes.Length - prefixLength];
+        for (var i = 0; i < decoded.Length; i++)
+        {
+            decoded[i] = (byte)(bytes[prefixLength + i] ^ 0xAC);
+        }
+
+        return decoded;
     }
 
     private static byte[] DecodeVer413(byte[] bytes, int prefixLength)
